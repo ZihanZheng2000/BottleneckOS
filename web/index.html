@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bottleneck OS</title>
+  <style>
+    :root {
+      --bg: #f7f8f5;
+      --ink: #16201c;
+      --muted: #65706a;
+      --line: #d9ded6;
+      --panel: #ffffff;
+      --accent: #0d766e;
+      --warn: #b14e18;
+      --soft: #e7f2ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      padding: 28px 32px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      max-width: 860px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 420px;
+      gap: 18px;
+      padding: 20px 32px 32px;
+    }
+    section, aside {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      background: #fbfcfa;
+    }
+    tr[data-tech] { cursor: pointer; }
+    tr[data-tech]:hover { background: var(--soft); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #06443f;
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .score {
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+    .detail {
+      padding: 16px 18px;
+    }
+    .detail h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+    .breakdown {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      margin: 14px 0 18px;
+      font-size: 13px;
+    }
+    .bar {
+      height: 8px;
+      background: #e8ece6;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+    }
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 650;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button[data-action="rejected"]:hover { border-color: var(--warn); color: var(--warn); }
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--ink);
+      background: #fff;
+    }
+    .review-actions {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      min-width: 300px;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #fbfcfa;
+      border-top: 1px solid var(--line);
+      margin: 0;
+      padding: 16px 18px;
+      max-height: 460px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .evidence {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .evidence-item {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      font-size: 13px;
+    }
+    .tab-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab-btn { flex: 1; }
+    .tab-btn.active { background: var(--soft); border-color: var(--accent); color: var(--accent); }
+    input[type="url"], select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--ink);
+      background: #fff;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .ingest-label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+    .ingest-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+    .submit-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .submit-btn:hover:not(:disabled) { background: #0a6560; }
+    .submit-btn:disabled { opacity: 0.5; cursor: wait; }
+    .ingest-ok { background: var(--soft); color: #06443f; border-radius: 6px; padding: 12px; font-size: 13px; margin-top: 10px; }
+    .ingest-err { background: #fdf0eb; color: var(--warn); border-radius: 6px; padding: 12px; font-size: 13px; margin-top: 10px; }
+    .drop-zone {
+      border: 2px dashed var(--line);
+      border-radius: 6px;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .drop-zone:hover, .drop-zone.dz-over { border-color: var(--accent); color: var(--accent); }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; padding: 16px; }
+      header { padding: 22px 16px 16px; }
+      th, td { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bottleneck OS</h1>
+    <div class="subtitle">AI infrastructure bottleneck radar for attention shifts, constraint mechanics, and evidence-backed research theses.</div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section>
+        <div class="section-head">
+          <h2>Bottleneck Radar</h2>
+          <span class="badge">MVP seed data</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Technology</th>
+              <th>Score</th>
+              <th>Confidence</th>
+              <th>Timeline</th>
+              <th>Driver</th>
+            </tr>
+          </thead>
+          <tbody id="bottleneckRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Technology Radar</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Technology</th>
+              <th>Attention</th>
+              <th>30d</th>
+              <th>Momentum</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody id="technologyRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Coverage Overview</h2>
+          <span class="badge" id="coverageBadge">Loading</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Covered</th>
+              <th>Core Evidence Gaps</th>
+            </tr>
+          </thead>
+          <tbody id="coverageRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Evidence Integrity</h2>
+          <span class="badge" id="evidenceBadge">Loading</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Documents</th>
+              <th>Claims</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody id="evidenceAuditRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Policy Coverage</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Type</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody id="policyRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Expert Signal</h2>
+          <span class="badge" id="expertBadge">Loading</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Technology</th>
+              <th>Status</th>
+              <th>Evidence</th>
+              <th>Expert Sources</th>
+            </tr>
+          </thead>
+          <tbody id="expertRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Review Queue</h2>
+          <span class="badge" id="reviewBadge">Loading</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Claim</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Confidence</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="reviewRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Add Evidence</h2>
+          <span class="badge" id="ingestBadge">LLM or keyword</span>
+        </div>
+        <div style="padding:16px 18px 18px">
+          <div class="tab-row">
+            <button class="tab-btn active" id="tabUrlBtn">From URL</button>
+            <button class="tab-btn" id="tabFileBtn">From File</button>
+          </div>
+
+          <div id="ingestPanelUrl">
+            <label class="ingest-label" for="ingestUrl">URL</label>
+            <input type="url" id="ingestUrl" placeholder="https://example.com/press-release.html">
+          </div>
+
+          <div id="ingestPanelFile" style="display:none">
+            <label class="ingest-label">File (.txt or .md)</label>
+            <div class="drop-zone" id="dropZone">
+              <span id="dropLabel">Drop a file here, or click to browse</span>
+              <input type="file" id="ingestFile" accept=".txt,.md,.text,.html" style="display:none">
+            </div>
+          </div>
+
+          <div class="ingest-meta">
+            <div>
+              <label class="ingest-label" for="ingestSourceName">Source name</label>
+              <input type="text" id="ingestSourceName" placeholder="NVIDIA, SemiAnalysis…">
+            </div>
+            <div>
+              <label class="ingest-label" for="ingestSourceType">Source type</label>
+              <select id="ingestSourceType">
+                <option value="news_article">News article</option>
+                <option value="analyst_report">Analyst report</option>
+                <option value="sec_filing">SEC filing</option>
+                <option value="earnings_transcript">Earnings transcript</option>
+                <option value="government_report">Government report</option>
+                <option value="technical_blog">Technical blog</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="submit-btn" id="ingestSubmit">Analyze &amp; Add</button>
+          <div id="ingestResult"></div>
+        </div>
+      </section>
+    </div>
+
+    <aside>
+      <div class="section-head">
+        <h2 id="detailTitle">Power</h2>
+        <button id="thesisButton">Generate Thesis</button>
+      </div>
+      <div class="detail" id="detailPanel"></div>
+      <pre id="thesisPanel">Select a technology and generate a thesis.</pre>
+    </aside>
+  </main>
+
+  <script>
+    const bottleneckRows = document.querySelector("#bottleneckRows");
+    const technologyRows = document.querySelector("#technologyRows");
+    const coverageRows = document.querySelector("#coverageRows");
+    const coverageBadge = document.querySelector("#coverageBadge");
+    const evidenceBadge = document.querySelector("#evidenceBadge");
+    const evidenceAuditRows = document.querySelector("#evidenceAuditRows");
+    const policyRows = document.querySelector("#policyRows");
+    const expertBadge = document.querySelector("#expertBadge");
+    const expertRows = document.querySelector("#expertRows");
+    const reviewBadge = document.querySelector("#reviewBadge");
+    const reviewRows = document.querySelector("#reviewRows");
+    const detailTitle = document.querySelector("#detailTitle");
+    const detailPanel = document.querySelector("#detailPanel");
+    const thesisPanel = document.querySelector("#thesisPanel");
+    const thesisButton = document.querySelector("#thesisButton");
+    let selectedTechnology = "Power";
+
+    function pct(value) {
+      return `${Math.round(value * 100)}%`;
+    }
+
+    function score(value) {
+      return value === null ? "Insufficient" : value;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    async function getJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Request failed: ${url}`);
+      return response.json();
+    }
+
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || `Request failed: ${url}`);
+      return body;
+    }
+
+    async function loadRadar() {
+      const radar = await getJson("/api/bottleneck-radar");
+      const radarItems = [...radar.current, ...radar.insufficient_evidence];
+      bottleneckRows.innerHTML = radarItems.map(item => `
+        <tr data-tech="${item.technology}">
+          <td><strong>${item.technology}</strong><div class="muted">${item.category}</div></td>
+          <td class="score">${score(item.bottleneck_score)}</td>
+          <td>${pct(item.confidence)}</td>
+          <td>${item.timeline}</td>
+          <td>${escapeHtml(item.top_driver)}</td>
+        </tr>
+      `).join("");
+      bottleneckRows.querySelectorAll("tr").forEach(row => {
+        row.addEventListener("click", () => loadDetail(row.dataset.tech));
+      });
+
+      const tech = await getJson("/api/technology-radar");
+      technologyRows.innerHTML = tech.map(item => `
+        <tr data-tech="${item.technology}">
+          <td><strong>${item.technology}</strong><div class="muted">${item.category}</div></td>
+          <td class="score">${item.attention_score}</td>
+          <td>${pct(item.growth_30d)}</td>
+          <td><span class="badge">${item.momentum}</span></td>
+          <td>${item.evidence_count}</td>
+        </tr>
+      `).join("");
+      technologyRows.querySelectorAll("tr").forEach(row => {
+        row.addEventListener("click", () => loadDetail(row.dataset.tech));
+      });
+
+      const coverage = await getJson("/api/coverage");
+      const summary = coverage.summary;
+      coverageBadge.textContent = `${summary.core_technologies_covered}/${summary.core_technologies_total} core tech`;
+      coverageRows.innerHTML = `
+        <tr>
+          <td><strong>Core sources</strong></td>
+          <td>${summary.core_sources_present}/${summary.core_sources_total}</td>
+          <td>${summary.core_sources_missing.join(", ") || "none"}</td>
+        </tr>
+        <tr>
+          <td><strong>Core technologies</strong></td>
+          <td>${summary.core_technologies_covered}/${summary.core_technologies_total}</td>
+          <td>${summary.core_technologies_missing.join(", ") || "none"}</td>
+        </tr>
+      `;
+
+      const evidenceAudit = await getJson("/api/evidence-audit");
+      evidenceBadge.textContent = evidenceAudit.status;
+      evidenceAuditRows.innerHTML = `
+        <tr>
+          <td><span class="badge">${escapeHtml(evidenceAudit.status)}</span></td>
+          <td>${evidenceAudit.documents_checked}</td>
+          <td>${evidenceAudit.claims_checked}</td>
+          <td>${evidenceAudit.errors.length}</td>
+        </tr>
+      `;
+      const sourceRows = coverage.sources
+        .filter(item => item.priority === "core" && item.status === "missing")
+        .map(item => ({
+          target: item.source,
+          type: item.category,
+          priority: item.priority,
+          status: item.status,
+          evidence: item.matched_documents
+        }));
+      const technologyRowsData = coverage.technologies
+        .filter(item => item.priority === "core")
+        .map(item => ({
+          target: item.technology,
+          type: item.category,
+          priority: item.priority,
+          status: item.status,
+          evidence: item.evidence_count
+        }));
+      policyRows.innerHTML = [...sourceRows, ...technologyRowsData].map(item => `
+        <tr>
+          <td><strong>${item.target}</strong></td>
+          <td>${item.type}</td>
+          <td><span class="badge">${item.priority}</span></td>
+          <td>${item.status}</td>
+          <td>${item.evidence}</td>
+        </tr>
+      `).join("");
+
+      const expert = await getJson("/api/expert-signal");
+      expertBadge.textContent = `${expert.summary.technologies_with_expert_signal}/${expert.summary.core_technologies_total} core tech`;
+      expertRows.innerHTML = expert.technologies.map(item => `
+        <tr>
+          <td><strong>${escapeHtml(item.technology)}</strong><div class="muted">${escapeHtml(item.category)}</div></td>
+          <td><span class="badge">${escapeHtml(item.status)}</span></td>
+          <td>${item.expert_evidence_count}</td>
+          <td>${escapeHtml(item.expert_sources.join(", ") || "none")}</td>
+        </tr>
+      `).join("");
+
+      await loadReviewQueue();
+    }
+
+    async function loadReviewQueue() {
+      const review = await getJson("/api/review");
+      const reviewSummary = review.summary;
+      reviewBadge.textContent = `${reviewSummary.pending} pending`;
+      reviewRows.innerHTML = review.claims.slice(0, 8).map(item => `
+        <tr>
+          <td><strong>${escapeHtml(item.claim)}</strong><div class="muted">${escapeHtml(item.technology_id)}</div></td>
+          <td>${escapeHtml(item.claim_type.replaceAll("_", " "))}</td>
+          <td><span class="badge">${escapeHtml(item.review_status)}</span></td>
+          <td>${pct(item.confidence)}</td>
+          <td>
+            <div class="review-actions">
+              <input type="text" placeholder="Reviewer note" value="${escapeHtml(item.reviewer_note)}" data-note="${escapeHtml(item.id)}">
+              <button data-action="accepted" data-claim="${escapeHtml(item.id)}">Accept</button>
+              <button data-action="rejected" data-claim="${escapeHtml(item.id)}">Reject</button>
+            </div>
+          </td>
+        </tr>
+      `).join("") || `
+        <tr>
+          <td colspan="5" class="muted">No review artifacts found.</td>
+        </tr>
+      `;
+      reviewRows.querySelectorAll("button[data-claim]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const claimId = button.dataset.claim;
+          const note = reviewRows.querySelector(`input[data-note="${CSS.escape(claimId)}"]`).value;
+          button.disabled = true;
+          try {
+            await postJson(`/api/review/claims/${encodeURIComponent(claimId)}`, {
+              review_status: button.dataset.action,
+              reviewer_note: note
+            });
+            await loadReviewQueue();
+          } catch (error) {
+            button.disabled = false;
+            reviewBadge.textContent = error.message;
+          }
+        });
+      });
+    }
+
+    async function loadDetail(technology) {
+      selectedTechnology = technology;
+      detailTitle.textContent = technology;
+      const detail = await getJson(`/api/bottlenecks/${encodeURIComponent(technology)}`);
+      const breakdown = Object.entries(detail.breakdown).map(([key, value]) => `
+        <div>
+          <strong>${key.replaceAll("_", " ")}</strong>
+          <div class="bar"><span style="width:${value}%"></span></div>
+        </div>
+        <div class="score">${value}</div>
+      `).join("");
+      const evidence = detail.evidence.slice(0, 4).map(item => `
+        <div class="evidence-item">
+          <strong>${item.claim_type.replaceAll("_", " ")}</strong>
+          <div>${item.claim}</div>
+          <div class="muted">${item.source_name} &middot; ${item.published_at}</div>
+        </div>
+      `).join("");
+      detailPanel.innerHTML = `
+        <h3>${score(detail.score)}/100</h3>
+        <div class="muted">${detail.status} &middot; ${detail.timeline}</div>
+        <div class="breakdown">${breakdown}</div>
+        <div class="evidence">${evidence}</div>
+      `;
+    }
+
+    thesisButton.addEventListener("click", async () => {
+      thesisPanel.textContent = "Generating thesis...";
+      const thesis = await getJson(`/api/theses?technology=${encodeURIComponent(selectedTechnology)}`);
+      thesisPanel.textContent = thesis.markdown;
+    });
+
+    // --- Add Evidence panel ---
+    let _ingestTab = 'url';
+    let _ingestFileText = '';
+    let _ingestFileName = '';
+
+    document.getElementById('tabUrlBtn').addEventListener('click', () => {
+      _ingestTab = 'url';
+      document.getElementById('ingestPanelUrl').style.display = '';
+      document.getElementById('ingestPanelFile').style.display = 'none';
+      document.getElementById('tabUrlBtn').classList.add('active');
+      document.getElementById('tabFileBtn').classList.remove('active');
+    });
+    document.getElementById('tabFileBtn').addEventListener('click', () => {
+      _ingestTab = 'file';
+      document.getElementById('ingestPanelUrl').style.display = 'none';
+      document.getElementById('ingestPanelFile').style.display = '';
+      document.getElementById('tabUrlBtn').classList.remove('active');
+      document.getElementById('tabFileBtn').classList.add('active');
+    });
+
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('click', () => document.getElementById('ingestFile').click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dz-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dz-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dz-over');
+      if (e.dataTransfer.files[0]) handleIngestFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('ingestFile').addEventListener('change', function() {
+      if (this.files[0]) handleIngestFile(this.files[0]);
+    });
+
+    function handleIngestFile(file) {
+      _ingestFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = e => {
+        _ingestFileText = e.target.result;
+        document.getElementById('dropLabel').textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+        if (!document.getElementById('ingestSourceName').value) {
+          document.getElementById('ingestSourceName').value = file.name.replace(/\.[^.]+$/, '');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById('ingestSubmit').addEventListener('click', async () => {
+      const btn = document.getElementById('ingestSubmit');
+      const resultEl = document.getElementById('ingestResult');
+
+      const payload = {
+        source_name: document.getElementById('ingestSourceName').value.trim(),
+        source_type: document.getElementById('ingestSourceType').value,
+      };
+
+      if (_ingestTab === 'url') {
+        const url = document.getElementById('ingestUrl').value.trim();
+        if (!url) { resultEl.innerHTML = '<div class="ingest-err">Enter a URL first.</div>'; return; }
+        payload.url = url;
+      } else {
+        if (!_ingestFileText) { resultEl.innerHTML = '<div class="ingest-err">Select a file first.</div>'; return; }
+        payload.text = _ingestFileText;
+        payload.filename = _ingestFileName;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Analyzing…';
+      resultEl.innerHTML = '';
+
+      try {
+        const result = await postJson('/api/ingest', payload);
+        const breakdown = Object.entries(result.technology_breakdown)
+          .sort((a, b) => b[1] - a[1])
+          .map(([t, n]) => `${escapeHtml(t)}: ${n}`)
+          .join(', ');
+        resultEl.innerHTML = `<div class="ingest-ok">
+          <strong>${result.claims_extracted} claim${result.claims_extracted !== 1 ? 's' : ''} added</strong>
+          via ${escapeHtml(result.extraction_method)}<br>
+          <span class="muted">${breakdown || 'No matching technologies found.'}</span>
+        </div>`;
+        if (result.claims_extracted > 0) {
+          await loadRadar();
+          await loadDetail(selectedTechnology);
+        }
+      } catch (error) {
+        resultEl.innerHTML = `<div class="ingest-err">${escapeHtml(error.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze & Add';
+      }
+    });
+    // --- end Add Evidence ---
+
+    loadRadar().then(() => loadDetail(selectedTechnology)).catch(error => {
+      detailPanel.textContent = error.message;
+    });
+  </script>
+</body>
+</html>

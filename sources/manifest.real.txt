@@ -1,0 +1,36 @@
+# Real public source records for URL-based ingestion.
+# Separate records with ---
+
+title: NVIDIA 800 VDC Architecture Will Power the Next Generation of AI Factories
+source_name: NVIDIA
+source_type: technical_blog
+published_at: 2025-05-20
+url: https://developer.nvidia.com/blog/nvidia-800-v-hvdc-architecture-will-power-the-next-generation-of-ai-factories/
+reliability_weight: 0.9
+
+---
+
+title: Scaling AI Factories with Co-Packaged Optics for Better Power Efficiency
+source_name: NVIDIA
+source_type: technical_blog
+published_at: 2025-08-18
+url: https://developer.nvidia.com/blog/scaling-ai-factories-with-co-packaged-optics-for-better-power-efficiency/
+reliability_weight: 0.88
+
+---
+
+title: TSMC Unveils Next-Generation A14 Process at North America Technology Symposium
+source_name: TSMC
+source_type: press_release
+published_at: 2025-04-24
+url: https://pr.tsmc.com/english/news/3228
+reliability_weight: 0.9
+
+---
+
+title: Broadcom Delivers the Future of AI Infrastructure with End-to-End AI Networking
+source_name: Broadcom
+source_type: press_release
+published_at: 2025-10-08
+url: https://investors.broadcom.com/news-releases/news-release-details/broadcom-delivers-future-ai-infrastructure-end-end-ai-networking
+reliability_weight: 0.84

@@ -1,0 +1,115 @@
+# Bottleneck OS — RSS/API feed configuration
+# Run: py scripts/fetch_feeds.py
+# Each entry separated by ---
+# EDGAR feeds: automatically follow filing index -> Ex-99.1 (earnings press release) -> main doc
+
+# ── NVIDIA ────────────────────────────────────────────────────────────────────
+
+# SEC EDGAR — NVIDIA 8-K (earnings, material events; Ex-99.1 = earnings press release)
+source_name: SEC EDGAR NVDA
+source_type: sec_filing
+reliability_weight: 0.95
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001045810&type=8-K&dateb=&owner=include&count=10&search_text=&output=atom
+max_items: 10
+
+---
+
+# ── AMD — GPU supply and AI accelerator demand ────────────────────────────────
+
+# SEC EDGAR — AMD 8-K (quarterly earnings; AI GPU demand, supply chain)
+source_name: SEC EDGAR AMD
+source_type: sec_filing
+reliability_weight: 0.90
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000002488&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── TSMC — Advanced Packaging (CoWoS) ────────────────────────────────────────
+
+# SEC EDGAR — TSMC 6-K (quarterly results, CoWoS capacity, packaging updates)
+source_name: SEC EDGAR TSM
+source_type: sec_filing
+reliability_weight: 0.95
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001046179&type=6-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── Broadcom — Switch ASIC and AI networking silicon ─────────────────────────
+
+# SEC EDGAR — Broadcom 8-K (AI networking, Tomahawk/Jericho switch ASICs)
+source_name: SEC EDGAR AVGO
+source_type: sec_filing
+reliability_weight: 0.90
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001730168&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── Vertiv — Power and Cooling infrastructure ─────────────────────────────────
+
+# SEC EDGAR — Vertiv 8-K (datacenter power, cooling, rack density)
+# CIK 0001674101 (Vertiv Holdings Co — verified from SEC company_tickers.json)
+source_name: SEC EDGAR VRT
+source_type: sec_filing
+reliability_weight: 0.88
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001674101&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── Coherent — Optical Transceiver ───────────────────────────────────────────
+
+# SEC EDGAR — Coherent Corp 8-K (800G/1.6T optical transceivers, AI datacenter)
+# CIK 0000820318 (Coherent Corp — formerly II-VI Inc, merged with Coherent Inc 2022)
+source_name: SEC EDGAR COHR
+source_type: sec_filing
+reliability_weight: 0.87
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000820318&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── Lumentum — Optical Transceiver (800G/1.6T laser sources) ─────────────────
+
+# SEC EDGAR — Lumentum 8-K (800G transceivers, optical components for AI datacenters)
+source_name: SEC EDGAR LITE
+source_type: sec_filing
+reliability_weight: 0.85
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001633978&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── Eaton — Power Distribution and Electrical Transformers ───────────────────
+
+# SEC EDGAR — Eaton Corp 8-K (large power transformers, UPS, datacenter PDUs)
+# Key for: Transformer bottleneck, Power infrastructure supply chain
+source_name: SEC EDGAR ETN
+source_type: sec_filing
+reliability_weight: 0.88
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001551182&type=8-K&dateb=&owner=include&count=5&search_text=&output=atom
+max_items: 5
+
+---
+
+# ── EIA — Power and Grid ──────────────────────────────────────────────────────
+
+# EIA Today in Energy — US electricity demand, grid capacity, datacenter power
+source_name: EIA
+source_type: government_report
+reliability_weight: 0.90
+rss_url: https://www.eia.gov/rss/todayinenergy.xml
+max_items: 10
+
+---
+
+# ── DOE — Department of Energy News ──────────────────────────────────────────
+
+# US DOE news — grid modernization, datacenter energy demand, power infrastructure
+source_name: DOE
+source_type: government_report
+reliability_weight: 0.88
+rss_url: https://www.energy.gov/rss.xml
+max_items: 8

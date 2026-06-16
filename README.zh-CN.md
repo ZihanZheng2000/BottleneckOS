@@ -4,7 +4,7 @@
 
 Bottleneck OS 是一个面向 AI 基础设施的“瓶颈雷达”。AI 的扩张不只取决于模型和软件，也取决于 HBM 内存、GPU、先进封装、电力、网络、光互连、液冷和数据中心基础设施这些物理层。
 
-Bottleneck OS helps identify which physical layers of AI infrastructure may become growth constraints before they are obvious to the market. It turns public evidence from filings, energy reports, and company materials into a traceable bottleneck radar for compute, memory, power, networking, cooling, and packaging.
+Bottleneck OS 用来识别 AI 基础设施里哪些物理层可能在市场形成共识之前，先变成增长约束。它把公司文件、能源报告和公开材料里的证据，转化成一张可追溯的瓶颈雷达，覆盖算力、内存、电力、网络、散热和先进封装等方向。
 
 换句话说，它想回答一个问题：AI 基础设施里，哪个环节可能最先变成限制增长的瓶颈？
 

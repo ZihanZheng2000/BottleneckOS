@@ -1,6 +1,10 @@
 ﻿# Bottleneck OS
 
+[English](README.md) | [中文](README.zh-CN.md)
+
 AI infrastructure runs on a stack of physical technologies — HBM memory, power delivery systems, networking silicon, optical interconnects, advanced packaging. When any layer of that stack becomes supply-constrained, it becomes a bottleneck that limits how fast AI can be built and deployed.
+
+Bottleneck OS helps identify which physical layers of AI infrastructure may become growth constraints before they are obvious to the market. It turns public evidence from filings, energy reports, and company materials into a traceable bottleneck radar for compute, memory, power, networking, cooling, and packaging.
 
 Bottleneck OS tracks these transitions **before they reach market consensus**. It ingests public evidence from SEC filings, earnings transcripts, government energy reports, and industry news, extracts structured claims with an LLM, and scores each technology on evidence quality and bottleneck severity.
 

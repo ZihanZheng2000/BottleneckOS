@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
-**Identify tomorrow's AI infrastructure bottlenecks before the market does.**
+**Identify near-term and emerging AI infrastructure bottlenecks before they become market consensus.**
 
 Bottleneck OS is an open-source AI infrastructure intelligence platform that detects emerging technology bottlenecks before they become market consensus.
 

@@ -20,6 +20,10 @@ The project turns public evidence into a traceable bottleneck radar for AI infra
 | JSON API | Yes |
 | Evidence traceability audit | Yes |
 
+## Preview
+
+![Bottleneck OS web UI](examples/bottleneck-radar-ui.png)
+
 See [EVIDENCE.md](EVIDENCE.md) for the data-integrity and traceability standard.
 
 The research workflow was inspired by Serenity's evidence-first research method: start from public primary sources, preserve the evidence trail, and separate what is known from what still needs coverage.

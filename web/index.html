@@ -260,6 +260,23 @@
 
       <section>
         <div class="section-head">
+          <h2>Watchlist / Needs More Evidence</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Technology</th>
+              <th>Evidence</th>
+              <th>Confidence</th>
+              <th>Why not scored yet</th>
+            </tr>
+          </thead>
+          <tbody id="watchlistRows"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="section-head">
           <h2>Technology Radar</h2>
         </div>
         <table>
@@ -426,6 +443,7 @@
 
   <script>
     const bottleneckRows = document.querySelector("#bottleneckRows");
+    const watchlistRows = document.querySelector("#watchlistRows");
     const technologyRows = document.querySelector("#technologyRows");
     const coverageRows = document.querySelector("#coverageRows");
     const coverageBadge = document.querySelector("#coverageBadge");
@@ -478,8 +496,7 @@
 
     async function loadRadar() {
       const radar = await getJson("/api/bottleneck-radar");
-      const radarItems = [...radar.current, ...radar.insufficient_evidence];
-      bottleneckRows.innerHTML = radarItems.map(item => `
+      bottleneckRows.innerHTML = radar.current.map(item => `
         <tr data-tech="${item.technology}">
           <td><strong>${item.technology}</strong><div class="muted">${item.category}</div></td>
           <td class="score">${score(item.bottleneck_score)}</td>
@@ -489,6 +506,17 @@
         </tr>
       `).join("");
       bottleneckRows.querySelectorAll("tr").forEach(row => {
+        row.addEventListener("click", () => loadDetail(row.dataset.tech));
+      });
+      watchlistRows.innerHTML = radar.insufficient_evidence.map(item => `
+        <tr data-tech="${item.technology}">
+          <td><strong>${item.technology}</strong><div class="muted">${item.category}</div></td>
+          <td>${item.evidence_count}</td>
+          <td>${pct(item.confidence)}</td>
+          <td>${escapeHtml(item.evidence_count === 0 ? "No accepted evidence yet. Needs source acquisition." : "Below evidence gate. More independent sources or counterarguments needed.")}</td>
+        </tr>
+      `).join("");
+      watchlistRows.querySelectorAll("tr").forEach(row => {
         row.addEventListener("click", () => loadDetail(row.dataset.tech));
       });
 

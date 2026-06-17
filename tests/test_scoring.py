@@ -34,6 +34,8 @@ class ScoringTests(unittest.TestCase):
         bottlenecks = bottleneck_radar(self.repo, self.as_of)
         self.assertEqual({"current", "emerging", "declining", "insufficient_evidence"}, set(bottlenecks))
         self.assertGreaterEqual(len(tech_radar), 11)
+        self.assertTrue(all("interpretation" in row for row in tech_radar))
+        self.assertTrue(all("growth_30d_label" in row for row in tech_radar))
         self.assertEqual("Power", bottlenecks["current"][0]["technology"])
         self.assertEqual(5, len(bottlenecks["current"]))
         insufficient = {item["technology"] for item in bottlenecks["insufficient_evidence"]}
@@ -41,6 +43,13 @@ class ScoringTests(unittest.TestCase):
             {"GPU", "CoWoS", "Switch ASIC", "Optical Transceiver", "Transformer", "Rack Density"},
             insufficient,
         )
+
+    def test_technology_radar_does_not_overstate_low_evidence_as_momentum(self) -> None:
+        rows = {row["technology"]: row for row in technology_radar(self.repo, self.as_of)}
+        self.assertEqual("low evidence", rows["GPU"]["momentum"])
+        self.assertEqual("n/a", rows["GPU"]["growth_30d_label"])
+        self.assertIn("not that the technology is irrelevant", rows["GPU"]["interpretation"])
+        self.assertEqual("insufficient history", rows["Power"]["growth_30d_label"])
 
     def test_detail_contains_breakdown_evidence_and_counterarguments(self) -> None:
         detail = technology_detail(self.repo, "Cooling", self.as_of)

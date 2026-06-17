@@ -2,15 +2,27 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
-AI infrastructure runs on a stack of physical technologies — HBM memory, power delivery systems, networking silicon, optical interconnects, advanced packaging. When any layer of that stack becomes supply-constrained, it becomes a bottleneck that limits how fast AI can be built and deployed.
+**Identify tomorrow's AI infrastructure bottlenecks before the market does.**
 
-Bottleneck OS helps identify which physical layers of AI infrastructure may become growth constraints before they are obvious to the market. It turns public evidence from filings, energy reports, and company materials into a traceable bottleneck radar for compute, memory, power, networking, cooling, and packaging.
+Bottleneck OS is an open-source AI infrastructure intelligence platform that detects emerging technology bottlenecks before they become market consensus.
 
-Bottleneck OS tracks these transitions **before they reach market consensus**. It ingests public evidence from SEC filings, earnings transcripts, government energy reports, and industry news, extracts structured claims with an LLM, and scores each technology on evidence quality and bottleneck severity.
+Using LLM-powered evidence extraction from SEC filings, government reports, earnings transcripts, and industry news, it continuously evaluates constraints across GPUs, High Bandwidth Memory (HBM), datacenter power, networking, cooling, CoWoS advanced packaging, Co-Packaged Optics (CPO), and related technologies.
 
-The output is a scored radar of AI infrastructure technologies ranked by how close each is to becoming a critical constraint.
+The project turns public evidence into a traceable bottleneck radar for AI infrastructure, GPU supply chain analysis, AI investment research, equity research, financial analysis, investment thesis work, alternative data, evidence extraction, market intelligence, and knowledge graph workflows.
+
+| Feature | Status |
+|---|---|
+| Evidence ingestion | Yes |
+| LLM claim extraction | Yes |
+| Bottleneck radar | Yes |
+| Web UI | Yes |
+| Historical trends | Yes |
+| JSON API | Yes |
+| Evidence traceability audit | Yes |
 
 See [EVIDENCE.md](EVIDENCE.md) for the data-integrity and traceability standard.
+
+The research workflow was inspired by Serenity's evidence-first research method: start from public primary sources, preserve the evidence trail, and separate what is known from what still needs coverage.
 
 ---
 
@@ -218,10 +230,12 @@ This is an early-stage system. Known gaps:
 
 **Evidence coverage** — Some technologies may show `insufficient_evidence` if the extracted claim set does not yet cover all three required claim groups (demand, constraint, counterargument) from at least two independent sources. Running a fresh `fetch_feeds.py` + `extract_claims.py` cycle improves coverage over time.
 
+**Low evidence is not proof of no bottleneck** — A low attention score usually means the current public-source set is thin or the technology is not yet prominent in the collected materials. It should be read as a coverage and popularity signal, not as proof that the technology cannot become a bottleneck.
+
 **Ingestion** — The system is not an automated crawler. Evidence is fetched and extracted on manual trigger via `fetch_feeds.py` + `extract_claims.py`. A scheduled pipeline is the next production step.
 
 **LLM extraction review** — LLM-extracted claims are drafts until reviewed. Production reports should use accepted claims whose evidence quotes trace back to stored source text.
 
-**Attention momentum** — The 30-day growth metric is derived from evidence publication dates, not a real historical time-series. It becomes more meaningful after several ingestion runs accumulate over time.
+**Attention momentum** — The 30-day growth metric is derived from evidence publication dates, not a real historical time-series. When history is thin, the UI reports `insufficient history` instead of treating a sparse data set as a real trend.
 
 **Expert sources** — SemiAnalysis and other expert newsletters are not yet in the default feed list. Adding them will materially improve signal quality.

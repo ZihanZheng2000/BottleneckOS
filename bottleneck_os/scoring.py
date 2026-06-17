@@ -200,17 +200,46 @@ def technology_radar(repo: Repository, as_of: date) -> list[dict]:
     rows = []
     for snapshot in sorted(snapshots, key=lambda item: item.attention_score, reverse=True):
         tech = repo.technology_by_id(snapshot.technology_id)
+        growth_label, momentum_label, interpretation = _technology_radar_interpretation(snapshot)
         rows.append(
             {
                 "technology": tech.name,
                 "category": tech.category,
                 "attention_score": snapshot.attention_score,
                 "growth_30d": snapshot.attention_growth_30d,
-                "momentum": snapshot.momentum,
+                "growth_30d_label": growth_label,
+                "momentum": momentum_label,
                 "evidence_count": snapshot.evidence_count,
+                "interpretation": interpretation,
             }
         )
     return rows
+
+
+def _technology_radar_interpretation(snapshot: ScoreSnapshot) -> tuple[str, str, str]:
+    if snapshot.evidence_count == 0:
+        return (
+            "n/a",
+            "low evidence",
+            "No accepted evidence yet. This means the current source set is thin, not that the technology is irrelevant.",
+        )
+    if snapshot.evidence_count < 3:
+        return (
+            "n/a",
+            "low evidence",
+            "Limited evidence in the current source set. Treat attention as a coverage signal, not a bottleneck conclusion.",
+        )
+    if snapshot.evidence_count < 5:
+        return (
+            "insufficient history",
+            "insufficient history",
+            "Enough evidence to track attention, but not enough run history to interpret short-term momentum.",
+        )
+    return (
+        f"{round(snapshot.attention_growth_30d * 100)}%",
+        snapshot.momentum,
+        "Momentum is based on evidence publication dates and should be confirmed with repeated ingestion runs.",
+    )
 
 
 def bottleneck_radar(repo: Repository, as_of: date) -> dict[str, list[dict]]:

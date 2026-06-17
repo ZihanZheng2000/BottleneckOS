@@ -1,16 +1,28 @@
-# Bottleneck OS
+﻿# Bottleneck OS
 
 [English](README.md) | [中文](README.zh-CN.md)
 
-Bottleneck OS 是一个面向 AI 基础设施的“瓶颈雷达”。AI 的扩张不只取决于模型和软件，也取决于 HBM 内存、GPU、先进封装、电力、网络、光互连、液冷和数据中心基础设施这些物理层。
+**在市场形成共识之前，识别明天的 AI 基础设施瓶颈。**
 
-Bottleneck OS 用来识别 AI 基础设施里哪些物理层可能在市场形成共识之前，先变成增长约束。它把公司文件、能源报告和公开材料里的证据，转化成一张可追溯的瓶颈雷达，覆盖算力、内存、电力、网络、散热和先进封装等方向。
+Bottleneck OS 是一个开源 AI 基础设施情报平台，用来发现还没有成为市场共识的技术瓶颈。
 
-换句话说，它想回答一个问题：AI 基础设施里，哪个环节可能最先变成限制增长的瓶颈？
+它使用 LLM 从 SEC 文件、政府报告、财报材料和行业新闻中提取证据，持续评估 GPU、HBM 高带宽内存、数据中心电力、网络、散热、CoWoS 先进封装、CPO 共同封装光学等方向的约束。
 
-系统会读取公开资料，比如 SEC EDGAR 文件、公司公告、能源报告和行业材料，用 LLM 或关键词方法提取结构化证据，然后给不同技术方向打分。输出结果是一张可追溯的瓶颈雷达。
+这个项目把公开证据转化成一张可追溯的瓶颈雷达，可用于 AI infrastructure 研究、GPU supply chain 分析、AI investment research、equity research、financial analysis、investment thesis、alternative data、evidence extraction、market intelligence 和 knowledge graph 工作流。
+
+| 功能 | 状态 |
+|---|---|
+| 证据抓取 | 已支持 |
+| LLM claim 提取 | 已支持 |
+| 瓶颈雷达 | 已支持 |
+| Web UI | 已支持 |
+| 历史趋势 | 已支持 |
+| JSON API | 已支持 |
+| 证据追溯审计 | 已支持 |
 
 数据完整性和证据追溯标准见 [EVIDENCE.md](EVIDENCE.md)。
+
+这个研究流程的灵感来自 Serenity 的 evidence-first research method：先从公开一手资料出发，保留证据链，并把“已经知道的事实”和“仍然缺覆盖的地方”分开。
 
 ---
 
@@ -171,8 +183,9 @@ pytest tests/test_evidence_audit.py -q
 
 - 还不是全自动爬虫，抓取和提取需要手动触发。
 - 有些技术方向的证据覆盖还不够深。
+- 证据少或 attention 低，不等于这个技术一定不是瓶颈；它更多说明当前公开资料里材料少、热度低，或还没有被充分覆盖。
 - LLM 提取的 claim 需要人工 review。
-- 30 天 attention momentum 主要基于证据发布日期，不是真正长期历史时间序列。
+- 30 天 attention momentum 主要基于证据发布日期，不是真正长期历史时间序列。历史不足时，界面会显示 `insufficient history`，避免把稀疏数据误读成真实趋势。
 - SemiAnalysis 等专家来源还没有完全接入默认数据源。
 
 项目的核心原则是：不编造证据。每条正式 claim 都应该能追溯到真实公开来源和对应 quote。

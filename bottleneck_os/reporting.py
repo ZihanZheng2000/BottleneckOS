@@ -129,7 +129,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
             [
                 row["technology"],
                 row["attention_score"],
-                f"{round(row['growth_30d'] * 100)}%",
+                row["growth_30d_label"],
                 row["momentum"],
                 row["evidence_count"],
             ]

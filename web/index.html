@@ -495,10 +495,10 @@
       const tech = await getJson("/api/technology-radar");
       technologyRows.innerHTML = tech.map(item => `
         <tr data-tech="${item.technology}">
-          <td><strong>${item.technology}</strong><div class="muted">${item.category}</div></td>
+          <td><strong>${item.technology}</strong><div class="muted">${item.category}</div><div class="muted">${escapeHtml(item.interpretation)}</div></td>
           <td class="score">${item.attention_score}</td>
-          <td>${pct(item.growth_30d)}</td>
-          <td><span class="badge">${item.momentum}</span></td>
+          <td>${escapeHtml(item.growth_30d_label)}</td>
+          <td><span class="badge">${escapeHtml(item.momentum)}</span></td>
           <td>${item.evidence_count}</td>
         </tr>
       `).join("");

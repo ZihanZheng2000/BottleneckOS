@@ -286,9 +286,11 @@ def run(host: str = "127.0.0.1", port: int = 8000, review_dir: str | None = None
         # Merge: seed data + review data, deduplicated by id
         seen_docs = {d.id for d in seed.documents}
         seen_claims = {c.id for c in seed.claims}
+        seen_techs = {t.id for t in seed.technologies}
         merged_docs = list(seed.documents) + [d for d in reviewed.documents if d.id not in seen_docs]
         merged_claims = list(seed.claims) + [c for c in reviewed.claims if c.id not in seen_claims]
-        repo = Repository(list(seed.technologies), merged_docs, merged_claims)
+        merged_techs = list(seed.technologies) + [t for t in reviewed.technologies if t.id not in seen_techs]
+        repo = Repository(merged_techs, merged_docs, merged_claims)
         BottleneckHandler.repo = repo
         print(f"Seed: {len(seed.documents)} docs, {len(seed.claims)} claims")
         print(f"Review: {len(reviewed.documents)} docs, {len(reviewed.claims)} claims")

@@ -28,6 +28,20 @@ def claim_to_review_record(claim: Claim, status: str = "pending", reviewer_note:
     return data
 
 
+def technology_to_record(technology: Technology) -> dict:
+    return asdict(technology)
+
+
+def _technology_from_record(record: dict) -> Technology:
+    return Technology(
+        record["id"],
+        record["name"],
+        record["category"],
+        tuple(record.get("aliases", ())),
+        record.get("status", "confirmed"),
+    )
+
+
 def write_review_artifacts(
     repo: Repository,
     output_dir: Path,
@@ -39,6 +53,7 @@ def write_review_artifacts(
     output_dir.mkdir(parents=True, exist_ok=True)
     documents_path = output_dir / "documents.jsonl"
     claims_path = output_dir / "claims.jsonl"
+    technologies_path = output_dir / "technologies.jsonl"
     mode = "w" if overwrite else "x"
     with documents_path.open(mode, encoding="utf-8") as handle:
         for document in repo.documents:
@@ -46,6 +61,9 @@ def write_review_artifacts(
     with claims_path.open(mode, encoding="utf-8") as handle:
         for claim in repo.claims:
             handle.write(json.dumps(claim_to_review_record(claim, default_status), sort_keys=True) + "\n")
+    with technologies_path.open(mode, encoding="utf-8") as handle:
+        for technology in repo.technologies:
+            handle.write(json.dumps(technology_to_record(technology), sort_keys=True) + "\n")
     return documents_path, claims_path
 
 
@@ -54,11 +72,20 @@ def load_review_repository(
     technologies: list[Technology] | None = None,
     include_statuses: set[str] | None = None,
 ) -> Repository:
-    technologies = list(technologies or TECHNOLOGIES)
+    base_technologies = list(technologies or TECHNOLOGIES)
     include_statuses = include_statuses or {"accepted"}
     unknown_statuses = include_statuses - VALID_REVIEW_STATUSES
     if unknown_statuses:
         raise ValueError(f"Invalid review statuses: {', '.join(sorted(unknown_statuses))}")
+
+    technologies_path = artifact_dir / "technologies.jsonl"
+    discovered = (
+        [_technology_from_record(record) for record in _read_jsonl(technologies_path)]
+        if technologies_path.exists()
+        else []
+    )
+    known_ids = {technology.id for technology in base_technologies}
+    merged_technologies = base_technologies + [tech for tech in discovered if tech.id not in known_ids]
 
     documents = [_document_from_record(record) for record in _read_jsonl(artifact_dir / "documents.jsonl")]
     claims: list[Claim] = []
@@ -66,7 +93,7 @@ def load_review_repository(
         status = record.get("review_status", "pending")
         if status in include_statuses:
             claims.append(_claim_from_record(record))
-    return Repository(technologies, documents, claims)
+    return Repository(merged_technologies, documents, claims)
 
 
 def set_all_claim_statuses(artifact_dir: Path, status: str) -> Path:

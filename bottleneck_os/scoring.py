@@ -205,6 +205,7 @@ def technology_radar(repo: Repository, as_of: date) -> list[dict]:
             {
                 "technology": tech.name,
                 "category": tech.category,
+                "status": tech.status,
                 "attention_score": snapshot.attention_score,
                 "growth_30d": snapshot.attention_growth_30d,
                 "growth_30d_label": growth_label,

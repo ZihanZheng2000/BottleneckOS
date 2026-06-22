@@ -11,7 +11,7 @@ from .models import Claim, Document, ScoreSnapshot, Technology
 from .repository import Repository
 from .scoring import score_snapshots
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -44,7 +44,8 @@ def init_db(conn: sqlite3.Connection) -> None:
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
-            aliases TEXT NOT NULL
+            aliases TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'confirmed'
         );
 
         CREATE TABLE IF NOT EXISTS documents (
@@ -100,6 +101,9 @@ def init_db(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(technologies)")}
+    if "status" not in existing_columns:
+        conn.execute("ALTER TABLE technologies ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'")
     conn.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
         ("schema_version", str(SCHEMA_VERSION)),
@@ -132,10 +136,10 @@ def persist_run(
         for technology in repo.technologies:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO technologies(id, name, category, aliases)
-                VALUES (?, ?, ?, ?)
+                INSERT OR REPLACE INTO technologies(id, name, category, aliases, status)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (technology.id, technology.name, technology.category, "|".join(technology.aliases)),
+                (technology.id, technology.name, technology.category, "|".join(technology.aliases), technology.status),
             )
         for document in repo.documents:
             conn.execute(
@@ -235,7 +239,13 @@ def load_repository_for_run(conn: sqlite3.Connection, run_id: str) -> Repository
     from datetime import date as date_type
 
     technologies = [
-        Technology(row["id"], row["name"], row["category"], tuple(filter(None, row["aliases"].split("|"))))
+        Technology(
+            row["id"],
+            row["name"],
+            row["category"],
+            tuple(filter(None, row["aliases"].split("|"))),
+            row["status"],
+        )
         for row in conn.execute("SELECT * FROM technologies ORDER BY id").fetchall()
     ]
     documents = [

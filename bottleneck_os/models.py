@@ -12,6 +12,7 @@ class Technology:
     name: str
     category: str
     aliases: tuple[str, ...] = field(default_factory=tuple)
+    status: str = "confirmed"  # "confirmed" (seeded ontology) or "provisional" (discovered from materials)
 
 
 @dataclass(frozen=True)

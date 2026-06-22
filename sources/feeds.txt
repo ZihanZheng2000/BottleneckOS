@@ -113,3 +113,95 @@ source_type: government_report
 reliability_weight: 0.88
 rss_url: https://www.energy.gov/rss.xml
 max_items: 8
+
+# ── Annual reports (10-K / 20-F) ───────────────────────────────────────────────
+# 8-K press releases are short and promotional. Annual reports carry full
+# Item 1A Risk Factors sections, which is where demand-slowdown, supply-easing,
+# and "alternatives emerging" counterargument language actually shows up.
+# This targets the evidence-gate requirement that every scored technology have
+# at least one counterargument/uncertainty signal — the thin technologies
+# (CoWoS, Optical Transceiver, Rack Density, Switch ASIC, Transformer) are
+# stuck on this, not on demand evidence.
+
+# SEC EDGAR — NVIDIA 10-K (GPU/HBM/CoWoS/Rack Density risk factors)
+source_name: SEC EDGAR NVDA 10-K
+source_type: sec_filing
+reliability_weight: 0.95
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001045810&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — AMD 10-K (GPU/accelerator supply risk factors)
+source_name: SEC EDGAR AMD 10-K
+source_type: sec_filing
+reliability_weight: 0.90
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000002488&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — TSMC 20-F (foreign private issuer annual report; CoWoS capacity risk factors)
+source_name: SEC EDGAR TSM 20-F
+source_type: sec_filing
+reliability_weight: 0.95
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001046179&type=20-F&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — Broadcom 10-K (Switch ASIC / AI networking risk factors)
+source_name: SEC EDGAR AVGO 10-K
+source_type: sec_filing
+reliability_weight: 0.90
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001730168&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — Vertiv 10-K (Cooling / Rack Density risk factors)
+source_name: SEC EDGAR VRT 10-K
+source_type: sec_filing
+reliability_weight: 0.88
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001674101&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — Coherent 10-K (Optical Transceiver / CPO risk factors)
+source_name: SEC EDGAR COHR 10-K
+source_type: sec_filing
+reliability_weight: 0.87
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000820318&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — Lumentum 10-K (Optical Transceiver risk factors)
+source_name: SEC EDGAR LITE 10-K
+source_type: sec_filing
+reliability_weight: 0.85
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001633978&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# SEC EDGAR — Eaton 10-K (large power Transformer risk factors)
+source_name: SEC EDGAR ETN 10-K
+source_type: sec_filing
+reliability_weight: 0.88
+rss_url: https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001551182&type=10-K&dateb=&owner=include&count=2&search_text=&output=atom
+max_items: 2
+
+---
+
+# ── Uptime Institute — independent data-center infrastructure research ────────
+# Verified working feed (returns 200 with the BottleneckOS research-bot UA).
+# blog.se.com (Schneider Electric) was also checked but returns 403 for our UA —
+# not added since it would just fail silently on every fetch run.
+
+source_name: Uptime Institute
+source_type: industry_report
+reliability_weight: 0.8
+rss_url: https://journal.uptimeinstitute.com/feed/
+max_items: 10

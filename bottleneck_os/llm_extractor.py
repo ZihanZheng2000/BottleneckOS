@@ -37,19 +37,38 @@ DEFAULT_MODEL = {
     "anthropic": "claude-haiku-4-5",
 }
 
+CATEGORIES = (
+    "Compute", "Memory", "Packaging", "Networking",
+    "Optical", "Power", "Cooling", "Data Center",
+)
+
 _SYSTEM = """\
 You are an industrial intelligence analyst specializing in AI infrastructure bottleneck transitions.
 
-Tracked technologies (use EXACT names):
+Already-tracked technologies (use these EXACT names when the text is about one of them):
 {technologies}
 
-From the provided source text, extract specific, factual claims relevant to these technologies.
+Read the source text first and decide what it is actually about — do not force-fit it into the
+tracked list above. Extract every specific, factual claim about a technology or component that
+could become an AI-infrastructure bottleneck:
+- If it matches a tracked technology, use that exact name.
+- If it describes a distinct technology or component NOT in the tracked list (a new chip,
+  material, protocol, or infrastructure element), extract it anyway with its own concise
+  canonical name and best-fit category — but only if the source text itself ties it explicitly
+  to AI infrastructure, AI data centers, or AI compute demand/supply. Do not drop a real signal
+  just because nothing in the tracked list matches it — new bottlenecks are exactly what this
+  system is meant to surface.
+- Do NOT register a new technology from material that is generically about energy, semiconductors,
+  commodities, shipping, or industrial policy with no explicit AI/data-center connection (e.g.
+  nuclear weapons material production, general fuel and commodity markets, oil refining, freight
+  logistics). Skip those claims entirely rather than inventing an out-of-scope entry.
 
 Return ONLY valid JSON — no markdown, no explanation, no code fences. Schema:
 {{
   "claims": [
     {{
-      "technology": "<exact technology name from the list>",
+      "technology": "<exact tracked name, or a new concise canonical technology/component name>",
+      "technology_category": "<one of: {categories}>",
       "claim_type": "<demand_signal|capacity_signal|technical_constraint|infrastructure_constraint|substitution_signal|counterargument>",
       "claim": "<concise 1-2 sentence factual claim, max 220 characters>",
       "evidence_quote": "<verbatim sentence(s) from the source>",
@@ -214,6 +233,65 @@ def _make_tech_lookup(technologies: list[Technology]) -> dict[str, Technology]:
     return lookup
 
 
+def _register_technology(
+    name: str,
+    category: str,
+    technologies: list[Technology],
+    tech_lookup: dict[str, Technology],
+) -> Technology:
+    """Judge step: the text introduced a technology outside the tracked ontology.
+
+    Registers it as provisional (instead of dropping the signal) and appends it to the
+    caller's `technologies` list in place so later documents in the same run, and the
+    returned Repository, see it too.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    tech_id = f"tech_{slug}" if slug else _stable_id("tech", name.lower())
+    technology = Technology(tech_id, name, category if category in CATEGORIES else "Other", (), "provisional")
+    technologies.append(technology)
+    tech_lookup[name.lower()] = technology
+    return technology
+
+
+_ITEM_HEADING = re.compile(r"item\s+(\d{1,2}[a-c]?)[.\s]", re.IGNORECASE)
+_PRIORITY_SECTIONS = ("1A", "7")  # Item 1A Risk Factors, Item 7 MD&A
+
+
+def _select_extraction_text(document: Document, max_chars: int) -> str:
+    """Pick the text sent to the LLM.
+
+    Large SEC filings open with pages of XBRL tag dumps and a table of
+    contents before any prose starts, so blindly truncating to max_chars
+    sends mostly noise and never reaches Item 1A/7 — the sections with the
+    demand/risk language claims actually need. Locate those sections instead
+    when the document is too big to send whole; everything else (8-Ks, RSS
+    articles, blog posts) is short enough that this never triggers.
+    """
+    text = document.clean_text
+    if len(text) <= max_chars or document.source_type != "sec_filing":
+        return text[:max_chars]
+
+    matches = [(m.start(), m.group(1).upper()) for m in _ITEM_HEADING.finditer(text)]
+    best: dict[str, tuple[int, int]] = {}
+    for i, (start, label) in enumerate(matches):
+        if label not in _PRIORITY_SECTIONS:
+            continue
+        next_start = matches[i + 1][0] if i + 1 < len(matches) else len(text)
+        gap = next_start - start
+        # Table-of-contents entries are followed almost immediately by the next
+        # "Item N" marker; the real section heading precedes a long prose run.
+        if gap > 5000 and gap > best.get(label, (0, 0))[1]:
+            best[label] = (start, gap)
+
+    if not best:
+        return text[:max_chars]
+
+    budget = max_chars // len(best)
+    ordered = sorted(best.values(), key=lambda value: value[0])
+    pieces = [text[start : start + min(gap, budget)] for start, gap in ordered]
+    return "\n\n".join(pieces)
+
+
 def extract_claims_with_llm(
     document: Document,
     technologies: list[Technology],
@@ -223,8 +301,8 @@ def extract_claims_with_llm(
     model: str,
     max_chars: int = 40_000,
 ) -> list[Claim]:
-    system = _SYSTEM.format(technologies=_build_tech_list(technologies))
-    text = document.clean_text[:max_chars]
+    system = _SYSTEM.format(technologies=_build_tech_list(technologies), categories=", ".join(CATEGORIES))
+    text = _select_extraction_text(document, max_chars)
 
     raw_text = _call_llm(provider, client, model, system, f"Source text:\n\n{text}")
     raw = _parse_json_response(raw_text)
@@ -234,10 +312,13 @@ def extract_claims_with_llm(
     seen: set[tuple] = set()
 
     for item in raw.get("claims", []):
-        tech_name = str(item.get("technology", "")).strip().lower()
-        technology = tech_lookup.get(tech_name)
-        if technology is None:
+        tech_name = str(item.get("technology", "")).strip()
+        if not tech_name:
             continue
+        technology = tech_lookup.get(tech_name.lower())
+        if technology is None:
+            category = str(item.get("technology_category", "")).strip()
+            technology = _register_technology(tech_name, category, technologies, tech_lookup)
         claim_type = str(item.get("claim_type", "")).strip()
         if claim_type not in _VALID_CLAIM_TYPES:
             continue
@@ -289,11 +370,14 @@ def extract_repository_from_directory(
         documents.append(document)
         print(f"  [llm] {path.name} ...", end=" ", flush=True)
         try:
+            before = len(technologies)
             claims = extract_claims_with_llm(
                 document, technologies,
                 provider=provider_name, client=client, model=effective_model, max_chars=max_chars,
             )
-            print(f"{len(claims)} claims")
+            discovered = technologies[before:]
+            suffix = f" (+{len(discovered)} new: {', '.join(t.name for t in discovered)})" if discovered else ""
+            print(f"{len(claims)} claims{suffix}")
         except Exception as exc:
             if fallback_to_keywords:
                 print(f"failed ({exc}) -> keyword fallback: {len(kw_claims)} claims")

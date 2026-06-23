@@ -154,8 +154,7 @@
       gap: 8px;
       min-width: 300px;
     }
-    pre {
-      white-space: pre-wrap;
+    .thesis {
       overflow-wrap: anywhere;
       background: #fbfcfa;
       border-top: 1px solid var(--line);
@@ -164,8 +163,23 @@
       max-height: 460px;
       overflow: auto;
       font-size: 13px;
-      line-height: 1.45;
+      line-height: 1.5;
     }
+    .thesis h1, .thesis h2, .thesis h3 {
+      margin: 16px 0 6px;
+      letter-spacing: 0;
+    }
+    .thesis h1:first-child, .thesis h2:first-child {
+      margin-top: 0;
+    }
+    .thesis h1 { font-size: 18px; }
+    .thesis h2 { font-size: 14px; color: var(--muted); text-transform: uppercase; }
+    .thesis p { margin: 0 0 10px; }
+    .thesis ul, .thesis ol {
+      margin: 0 0 10px;
+      padding-left: 20px;
+    }
+    .thesis li { margin: 0 0 4px; }
     .evidence {
       display: grid;
       gap: 10px;
@@ -437,7 +451,7 @@
         <button id="thesisButton">Generate Thesis</button>
       </div>
       <div class="detail" id="detailPanel"></div>
-      <pre id="thesisPanel">Select a technology and generate a thesis.</pre>
+      <div class="thesis" id="thesisPanel">Select a technology and generate a thesis.</div>
     </aside>
   </main>
 
@@ -475,6 +489,43 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+    }
+
+    // Minimal renderer for the headings/lists/paragraphs the thesis template
+    // produces (see bottleneck_os/thesis.py) — not general-purpose Markdown.
+    function renderMarkdown(markdown) {
+      let html = "";
+      let listTag = null;
+      const closeList = () => {
+        if (listTag) { html += `</${listTag}>`; listTag = null; }
+      };
+      for (const rawLine of markdown.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) { closeList(); continue; }
+        const heading = line.match(/^(#{1,6})\s+(.*)$/);
+        if (heading) {
+          closeList();
+          const level = heading[1].length;
+          html += `<h${level}>${escapeHtml(heading[2])}</h${level}>`;
+          continue;
+        }
+        const ordered = line.match(/^\d+\.\s+(.*)$/);
+        if (ordered) {
+          if (listTag !== "ol") { closeList(); html += "<ol>"; listTag = "ol"; }
+          html += `<li>${escapeHtml(ordered[1])}</li>`;
+          continue;
+        }
+        const unordered = line.match(/^[-*]\s+(.*)$/);
+        if (unordered) {
+          if (listTag !== "ul") { closeList(); html += "<ul>"; listTag = "ul"; }
+          html += `<li>${escapeHtml(unordered[1])}</li>`;
+          continue;
+        }
+        closeList();
+        html += `<p>${escapeHtml(line)}</p>`;
+      }
+      closeList();
+      return html;
     }
 
     async function getJson(url) {
@@ -673,7 +724,7 @@
     thesisButton.addEventListener("click", async () => {
       thesisPanel.textContent = "Generating thesis...";
       const thesis = await getJson(`/api/theses?technology=${encodeURIComponent(selectedTechnology)}`);
-      thesisPanel.textContent = thesis.markdown;
+      thesisPanel.innerHTML = renderMarkdown(thesis.markdown);
     });
 
     // --- Add Evidence panel ---

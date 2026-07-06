@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,6 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
 REVIEW_DIR = ROOT / "review" / "current"
 DB_PATH = ROOT / "data" / "bottleneck_os.sqlite"
+
+logger = logging.getLogger(__name__)
 
 
 class BottleneckHandler(BaseHTTPRequestHandler):
@@ -229,11 +232,12 @@ class BottleneckHandler(BaseHTTPRequestHandler):
         )
 
         with BottleneckHandler._repo_lock:
-            if any(d.id == doc_id for d in self.repo.documents):
+            if self.repo.has_document(doc_id):
                 raise ValueError(f"This document has already been ingested (id: {doc_id})")
 
             technologies = list(self.repo.technologies)
             extraction_method = "keyword"
+            llm_error: str | None = None
             try:
                 from .llm_extractor import detect_provider, _make_client, extract_claims_with_llm, DEFAULT_MODEL
                 provider_name, api_key = detect_provider()
@@ -244,7 +248,12 @@ class BottleneckHandler(BaseHTTPRequestHandler):
                     provider=provider_name, client=client, model=model,
                 )
                 extraction_method = f"{provider_name}/{model}"
-            except Exception:
+            except Exception as exc:
+                llm_error = f"{type(exc).__name__}: {exc}"
+                logger.warning(
+                    "LLM extraction failed for document %s, falling back to keyword extraction: %s",
+                    doc_id, llm_error,
+                )
                 claims = []
                 seen: set = set()
                 for sentence in split_sentences(content):
@@ -282,6 +291,7 @@ class BottleneckHandler(BaseHTTPRequestHandler):
             "document_id": doc_id,
             "source_name": source_name,
             "extraction_method": extraction_method,
+            "llm_error": llm_error,
             "claims_extracted": len(new_claims),
             "technology_breakdown": breakdown,
         }

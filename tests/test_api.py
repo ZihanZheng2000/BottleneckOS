@@ -134,6 +134,67 @@ class ApiTests(unittest.TestCase):
         payload = self.get_json("/api/run-diff?base_run=missing&current_run=also-missing", expected_status=404)
         self.assertIn("Unknown run_id", payload["error"])
 
+    def test_ingest_endpoint_extracts_claims_from_text(self) -> None:
+        payload = self.post_json(
+            "/api/ingest",
+            {
+                "text": (
+                    "GPU demand is surging as hyperscalers scale accelerator deployments, "
+                    "however supply is expected to improve as new fabs ramp."
+                ),
+                "source_name": "ingest-test-source",
+                "title": "Ingest test document",
+            },
+        )
+        self.assertIn("document_id", payload)
+        self.assertIn("llm_error", payload)
+        self.assertGreaterEqual(payload["claims_extracted"], 0)
+
+    def test_ingest_endpoint_rejects_duplicate_document(self) -> None:
+        body = {
+            "text": "Cooling systems face new thermal density constraints in AI data centers.",
+            "source_name": "duplicate-test-source",
+            "title": "Duplicate test document",
+        }
+        self.post_json("/api/ingest", body)
+        payload = self.post_json("/api/ingest", body, expected_status=400)
+        self.assertIn("already been ingested", payload["error"])
+
+    def test_ingest_endpoint_reports_llm_fallback_reason(self) -> None:
+        import bottleneck_os.llm_extractor as llm_extractor_module
+
+        original = llm_extractor_module.detect_provider
+
+        def failing_detect_provider(preferred: str = "auto"):
+            raise RuntimeError("no key configured for test")
+
+        llm_extractor_module.detect_provider = failing_detect_provider
+        try:
+            payload = self.post_json(
+                "/api/ingest",
+                {
+                    "text": "Networking switch ASIC supply is constrained by advanced packaging capacity.",
+                    "source_name": "llm-fallback-test-source",
+                    "title": "LLM fallback test document",
+                },
+            )
+        finally:
+            llm_extractor_module.detect_provider = original
+        self.assertEqual("keyword", payload["extraction_method"])
+        self.assertIn("no key configured for test", payload["llm_error"])
+
+    def test_ingest_endpoint_rejects_local_file_url(self) -> None:
+        payload = self.post_json(
+            "/api/ingest", {"url": "file:///etc/passwd"}, expected_status=400,
+        )
+        self.assertIn("Unsupported URL scheme", payload["error"])
+
+    def test_ingest_endpoint_rejects_private_network_url(self) -> None:
+        payload = self.post_json(
+            "/api/ingest", {"url": "http://169.254.169.254/latest/meta-data/"}, expected_status=400,
+        )
+        self.assertIn("non-public address", payload["error"])
+
     def test_review_endpoint(self) -> None:
         payload = self.get_json("/api/review")
         self.assertIn("summary", payload)

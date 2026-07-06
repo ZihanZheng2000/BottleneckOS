@@ -11,13 +11,45 @@ from __future__ import annotations
 
 import hashlib
 import html
+import ipaddress
 import re
 import shutil
+import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+_ALLOWED_SCHEMES = {"http", "https"}
+
+
+def _reject_non_public_url(url: str) -> None:
+    """Refuse anything that isn't a real http(s) request to a public host.
+
+    `urlopen` happily opens `file://` URLs (arbitrary local file read) and will
+    connect to loopback/private/link-local addresses (SSRF against localhost
+    services or cloud metadata endpoints like 169.254.169.254). Every fetch in
+    this project is supposed to be a real public source, so both are refused
+    up front. This validates the initial connection only — it does not
+    re-validate hosts across HTTP redirects, so a public URL that redirects to
+    a private address is a known residual gap, not one this check closes.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        raise ValueError(f"Unsupported URL scheme '{parsed.scheme or url}': only http and https are allowed")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError(f"URL has no hostname: {url}")
+    try:
+        resolved = socket.getaddrinfo(hostname, None)
+    except OSError as exc:
+        raise ValueError(f"Could not resolve host '{hostname}': {exc}") from exc
+    for family, _, _, _, sockaddr in resolved:
+        raw_address = sockaddr[0].split("%", 1)[0]  # strip IPv6 zone id, e.g. fe80::1%eth0
+        address = ipaddress.ip_address(raw_address)
+        if address.is_private or address.is_loopback or address.is_link_local or address.is_reserved or address.is_multicast or address.is_unspecified:
+            raise ValueError(f"Refusing to fetch '{hostname}': resolves to non-public address {raw_address}")
 
 
 @dataclass(frozen=True)
@@ -125,6 +157,7 @@ def _manifest_item(data: dict[str, str]) -> ManifestItem:
 
 
 def fetch_url(url: str, timeout: int = 20, user_agent: str = "BottleneckOS/0.1 research fetcher") -> tuple[bytes, str]:
+    _reject_non_public_url(url)
     request = Request(url, headers={"User-Agent": user_agent})
     with urlopen(request, timeout=timeout) as response:
         content_type = response.headers.get("Content-Type", "")

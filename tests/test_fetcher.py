@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from bottleneck_os.fetcher import archive_manifest_sources, parse_manifest, source_text_for_item
+from bottleneck_os.fetcher import archive_manifest_sources, fetch_url, parse_manifest, source_text_for_item
 
 
 class FetcherTests(unittest.TestCase):
@@ -114,6 +114,28 @@ class FetcherTests(unittest.TestCase):
         kind, body = source_text_for_item(item, b"%PDF-1.4 bytes", "application/pdf")
         self.assertEqual("unsupported_pdf", kind)
         self.assertIn("not parsed", body)
+
+
+class FetchUrlSafetyTests(unittest.TestCase):
+    def test_rejects_file_scheme(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported URL scheme"):
+            fetch_url("file:///etc/passwd")
+
+    def test_rejects_loopback_address(self) -> None:
+        with self.assertRaisesRegex(ValueError, "non-public address"):
+            fetch_url("http://127.0.0.1/admin")
+
+    def test_rejects_localhost_hostname(self) -> None:
+        with self.assertRaisesRegex(ValueError, "non-public address"):
+            fetch_url("http://localhost/admin")
+
+    def test_rejects_link_local_metadata_address(self) -> None:
+        with self.assertRaisesRegex(ValueError, "non-public address"):
+            fetch_url("http://169.254.169.254/latest/meta-data/")
+
+    def test_rejects_unsupported_scheme(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported URL scheme"):
+            fetch_url("ftp://example.com/file.txt")
 
 
 def parse_manifest_text(text: str):

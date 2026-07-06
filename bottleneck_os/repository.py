@@ -49,6 +49,9 @@ class Repository:
         except KeyError:
             raise KeyError(f"Unknown document id: {doc_id}")
 
+    def has_document(self, doc_id: str) -> bool:
+        return doc_id in self._doc_by_id
+
     def claims_for_technology(self, technology_id: str) -> list[Claim]:
         return self._claims_by_tech.get(technology_id, [])
 

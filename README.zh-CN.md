@@ -167,6 +167,9 @@ py scripts/report_from_review.py --review-dir review/current --as-of $TODAY
 | `GET /api/evidence-audit` | 检查 source URL 和 evidence quote 是否可追溯 |
 | `GET /api/acquisition-plan` | 推荐下一步应该补哪些来源 |
 | `GET /api/expert-signal` | 查看专家来源信号 |
+| `GET /api/runs` | 列出 SQLite 中已持久化的历史运行快照 |
+| `GET /api/trends?as_of=YYYY-MM-DD` | 基于持久化快照计算 30/90 天历史趋势变化 |
+| `GET /api/run-diff?base_run=...&current_run=...` | 对比两次持久化运行的分数/覆盖度差异(默认取最近两次) |
 
 普通读者可以不用管 API 部分；它主要给开发者和后续集成使用。
 

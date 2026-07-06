@@ -4,6 +4,7 @@ import json
 import tempfile
 import threading
 import unittest
+from datetime import date, timedelta
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 from bottleneck_os.api import BottleneckHandler
 from bottleneck_os.repository import build_seed_repository
 from bottleneck_os.review import write_review_artifacts
+from bottleneck_os.storage import connect, persist_run
 
 
 class ApiTests(unittest.TestCase):
@@ -20,6 +22,15 @@ class ApiTests(unittest.TestCase):
         cls.review_dir = Path(cls.tempdir.name) / "review"
         write_review_artifacts(build_seed_repository(), cls.review_dir, default_status="pending")
         BottleneckHandler.review_dir = cls.review_dir
+
+        cls.db_path = Path(cls.tempdir.name) / "bottleneck_os.sqlite"
+        BottleneckHandler.db_path = cls.db_path
+        conn = connect(cls.db_path)
+        repo = build_seed_repository()
+        persist_run(conn, repo, date.today() - timedelta(days=20), "test-baseline")
+        persist_run(conn, repo, date.today(), "test-current")
+        conn.close()
+
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), BottleneckHandler)
         cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -31,13 +42,13 @@ class ApiTests(unittest.TestCase):
         cls.thread.join(timeout=5)
         cls.tempdir.cleanup()
 
-    def get_json(self, path: str) -> dict | list:
+    def get_json(self, path: str, expected_status: int = 200) -> dict | list:
         conn = HTTPConnection("127.0.0.1", self.port, timeout=5)
         conn.request("GET", path)
         response = conn.getresponse()
         body = response.read().decode("utf-8")
         conn.close()
-        self.assertEqual(200, response.status, body)
+        self.assertEqual(expected_status, response.status, body)
         return json.loads(body)
 
     def post_json(self, path: str, payload: dict, expected_status: int = 200) -> dict | list:
@@ -99,6 +110,29 @@ class ApiTests(unittest.TestCase):
         sources = {item["source"]: item for item in payload["sources"]}
         self.assertEqual("present", sources["Dylan Patel"]["status"])
         self.assertEqual("missing", sources["SemiAnalysis"]["status"])
+
+    def test_runs_endpoint(self) -> None:
+        payload = self.get_json("/api/runs")
+        run_ids = {row["run_id"] for row in payload["runs"]}
+        self.assertGreaterEqual(len(run_ids), 2)
+        self.assertTrue(any(row["source"] == "test-current" for row in payload["runs"]))
+
+    def test_trends_endpoint(self) -> None:
+        payload = self.get_json("/api/trends")
+        self.assertRegex(payload["as_of"], r"^\d{4}-\d{2}-\d{2}$")
+        row = next(item for item in payload["technologies"] if item["technology"] == "Power")
+        self.assertEqual("calculated", row["30d_status"])
+        self.assertEqual(0, row["30d_score_delta"])
+
+    def test_run_diff_endpoint(self) -> None:
+        payload = self.get_json("/api/run-diff")
+        self.assertIn("score_deltas", payload)
+        self.assertIn("base", payload)
+        self.assertIn("current", payload)
+
+    def test_run_diff_endpoint_rejects_unknown_run(self) -> None:
+        payload = self.get_json("/api/run-diff?base_run=missing&current_run=also-missing", expected_status=404)
+        self.assertIn("Unknown run_id", payload["error"])
 
     def test_review_endpoint(self) -> None:
         payload = self.get_json("/api/review")

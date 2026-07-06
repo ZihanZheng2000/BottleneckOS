@@ -216,6 +216,9 @@ The HTTP server exposes a JSON API:
 | `GET /api/evidence-audit` | Traceability check for source URLs and evidence quotes |
 | `GET /api/acquisition-plan` | Recommended sources to fill evidence gaps |
 | `GET /api/expert-signal` | Signal from designated expert sources |
+| `GET /api/runs` | List persisted run snapshots from SQLite |
+| `GET /api/trends?as_of=YYYY-MM-DD` | 30/90-day historical trend deltas from persisted snapshots |
+| `GET /api/run-diff?base_run=...&current_run=...` | Score/coverage diff between two persisted runs (defaults to the two most recent) |
 
 ---
 

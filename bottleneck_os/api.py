@@ -11,22 +11,27 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from .acquisition import build_acquisition_plan
 from .coverage import coverage_summary, source_coverage, technology_policy_coverage
+from .diffing import compare_runs
 from .evidence_audit import audit_evidence_traceability
 from .expert_signal import expert_signal_by_technology, expert_signal_summary, expert_source_coverage
 from .policy import SOURCE_UNIVERSE, TECHNOLOGY_UNIVERSE
 from .repository import build_seed_repository
 from .review import review_claim_records, review_summary, update_claim_review
 from .scoring import bottleneck_radar, technology_detail, technology_radar
+from .storage import connect, list_runs
 from .thesis import generate_thesis
+from .trends import historical_trends
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
 REVIEW_DIR = ROOT / "review" / "current"
+DB_PATH = ROOT / "data" / "bottleneck_os.sqlite"
 
 
 class BottleneckHandler(BaseHTTPRequestHandler):
     repo = build_seed_repository()
     review_dir = REVIEW_DIR
+    db_path = DB_PATH
     # ThreadingHTTPServer runs one thread per request; _ingest() replaces
     # `repo` with a new object built from the current one, so concurrent
     # ingests must serialize around that read-modify-write or one of them
@@ -107,6 +112,37 @@ class BottleneckHandler(BaseHTTPRequestHandler):
                 )
             elif path == "/api/evidence-audit":
                 self._send_json(audit_evidence_traceability(self.repo))
+            elif path == "/api/runs":
+                conn = connect(self.db_path)
+                try:
+                    self._send_json({"runs": list_runs(conn)})
+                finally:
+                    conn.close()
+            elif path == "/api/trends":
+                query = parse_qs(parsed.query)
+                as_of = date.fromisoformat(query["as_of"][0]) if "as_of" in query else self.as_of
+                conn = connect(self.db_path)
+                try:
+                    self._send_json({"as_of": as_of.isoformat(), "technologies": historical_trends(conn, as_of)})
+                finally:
+                    conn.close()
+            elif path == "/api/run-diff":
+                query = parse_qs(parsed.query)
+                conn = connect(self.db_path)
+                try:
+                    runs = list_runs(conn)
+                    base_run = query.get("base_run", [None])[0]
+                    current_run = query.get("current_run", [None])[0]
+                    if not base_run or not current_run:
+                        if len(runs) < 2:
+                            raise ValueError(
+                                "Need at least two persisted runs, or pass base_run and current_run query parameters"
+                            )
+                        current_run = current_run or runs[0]["run_id"]
+                        base_run = base_run or runs[1]["run_id"]
+                    self._send_json(compare_runs(conn, base_run, current_run))
+                finally:
+                    conn.close()
             elif path == "/api/policy/sources":
                 self._send_json([source.__dict__ for source in SOURCE_UNIVERSE])
             elif path == "/api/policy/technologies":

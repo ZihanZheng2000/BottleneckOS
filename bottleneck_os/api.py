@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +27,11 @@ REVIEW_DIR = ROOT / "review" / "current"
 class BottleneckHandler(BaseHTTPRequestHandler):
     repo = build_seed_repository()
     review_dir = REVIEW_DIR
+    # ThreadingHTTPServer runs one thread per request; _ingest() replaces
+    # `repo` with a new object built from the current one, so concurrent
+    # ingests must serialize around that read-modify-write or one of them
+    # silently loses the other's document/claims (lost update).
+    _repo_lock = threading.Lock()
 
     @property
     def as_of(self) -> date:
@@ -186,48 +192,49 @@ class BottleneckHandler(BaseHTTPRequestHandler):
             doc_id, title, source_name, source_type, published_at, doc_url, content, reliability_weight
         )
 
-        if any(d.id == doc_id for d in self.repo.documents):
-            raise ValueError(f"This document has already been ingested (id: {doc_id})")
+        with BottleneckHandler._repo_lock:
+            if any(d.id == doc_id for d in self.repo.documents):
+                raise ValueError(f"This document has already been ingested (id: {doc_id})")
 
-        technologies = list(self.repo.technologies)
-        extraction_method = "keyword"
-        try:
-            from .llm_extractor import detect_provider, _make_client, extract_claims_with_llm, DEFAULT_MODEL
-            provider_name, api_key = detect_provider()
-            client = _make_client(provider_name, api_key)
-            model = DEFAULT_MODEL[provider_name]
-            claims = extract_claims_with_llm(
-                document, technologies,
-                provider=provider_name, client=client, model=model,
-            )
-            extraction_method = f"{provider_name}/{model}"
-        except Exception:
-            claims = []
-            seen: set = set()
-            for sentence in split_sentences(content):
-                claim_type = classify_claim_type(sentence)
-                if not claim_type:
-                    continue
-                for tech in technology_matches(sentence, technologies):
-                    key = (tech.id, claim_type, sentence)
-                    if key in seen:
+            technologies = list(self.repo.technologies)
+            extraction_method = "keyword"
+            try:
+                from .llm_extractor import detect_provider, _make_client, extract_claims_with_llm, DEFAULT_MODEL
+                provider_name, api_key = detect_provider()
+                client = _make_client(provider_name, api_key)
+                model = DEFAULT_MODEL[provider_name]
+                claims = extract_claims_with_llm(
+                    document, technologies,
+                    provider=provider_name, client=client, model=model,
+                )
+                extraction_method = f"{provider_name}/{model}"
+            except Exception:
+                claims = []
+                seen: set = set()
+                for sentence in split_sentences(content):
+                    claim_type = classify_claim_type(sentence)
+                    if not claim_type:
                         continue
-                    seen.add(key)
-                    claim_id = _stable_id("claim", doc_id, tech.id, claim_type, sentence)
-                    claims.append(Claim(
-                        claim_id, doc_id, tech.id, claim_type,
-                        infer_claim(sentence, tech, claim_type),
-                        sentence, 0.72, IMPACT_BY_TYPE[claim_type],
-                    ))
+                    for tech in technology_matches(sentence, technologies):
+                        key = (tech.id, claim_type, sentence)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        claim_id = _stable_id("claim", doc_id, tech.id, claim_type, sentence)
+                        claims.append(Claim(
+                            claim_id, doc_id, tech.id, claim_type,
+                            infer_claim(sentence, tech, claim_type),
+                            sentence, 0.72, IMPACT_BY_TYPE[claim_type],
+                        ))
 
-        existing_claim_ids = {c.id for c in self.repo.claims}
-        new_claims = [c for c in claims if c.id not in existing_claim_ids]
+            existing_claim_ids = {c.id for c in self.repo.claims}
+            new_claims = [c for c in claims if c.id not in existing_claim_ids]
 
-        BottleneckHandler.repo = Repository(
-            technologies,
-            list(self.repo.documents) + [document],
-            list(self.repo.claims) + new_claims,
-        )
+            BottleneckHandler.repo = Repository(
+                technologies,
+                list(self.repo.documents) + [document],
+                list(self.repo.claims) + new_claims,
+            )
 
         tech_names = {t.id: t.name for t in technologies}
         breakdown = {

@@ -3,11 +3,13 @@ from __future__ import annotations
 import unittest
 from datetime import date
 
-from bottleneck_os.repository import build_seed_repository
+import bottleneck_os.scoring as scoring_module
+from bottleneck_os.repository import Repository, build_seed_repository
 from bottleneck_os.scoring import (
     bottleneck_radar,
     bottleneck_score,
     evidence_is_sufficient,
+    score_snapshots,
     technology_detail,
     technology_radar,
 )
@@ -57,6 +59,32 @@ class ScoringTests(unittest.TestCase):
         self.assertIn("demand_growth", detail["breakdown"])
         self.assertGreaterEqual(len(detail["evidence"]), 3)
         self.assertGreaterEqual(len(detail["counterarguments"]), 1)
+
+    def test_score_snapshots_are_cached_per_repo_version_and_as_of(self) -> None:
+        calls: list[date] = []
+        original = scoring_module._compute_score_snapshots
+
+        def counting_wrapper(repo, as_of):
+            calls.append(as_of)
+            return original(repo, as_of)
+
+        scoring_module._compute_score_snapshots = counting_wrapper
+        try:
+            first = score_snapshots(self.repo, self.as_of)
+            second = score_snapshots(self.repo, self.as_of)
+            self.assertEqual(1, len(calls), "second call with the same repo+as_of should hit the cache")
+            self.assertEqual(first, second)
+
+            # A structurally-identical but distinct Repository instance (e.g. after
+            # an ingest) must NOT reuse the first repo's cached entry.
+            other_repo = Repository(list(self.repo.technologies), list(self.repo.documents), list(self.repo.claims))
+            score_snapshots(other_repo, self.as_of)
+            self.assertEqual(2, len(calls), "a different repo instance must miss the cache")
+
+            score_snapshots(self.repo, date(2026, 6, 11))
+            self.assertEqual(3, len(calls), "a different as_of must miss the cache")
+        finally:
+            scoring_module._compute_score_snapshots = original
 
     def test_thesis_is_markdown_and_evidence_backed(self) -> None:
         thesis = generate_thesis(self.repo, "Power", self.as_of)

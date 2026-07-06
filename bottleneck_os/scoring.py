@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from datetime import date
 from math import exp
 
@@ -147,7 +147,30 @@ def _momentum(score: int, claim_counts: Counter[str]) -> tuple[float, float, str
     return growth_30d, growth_90d, label
 
 
+_SNAPSHOT_CACHE_LIMIT = 64
+_snapshot_cache: OrderedDict[tuple[int, date], list[ScoreSnapshot]] = OrderedDict()
+
+
 def score_snapshots(repo: Repository, as_of: date) -> list[ScoreSnapshot]:
+    # Every technology's attention/bottleneck score is recomputed from scratch
+    # here, and this is called on essentially every read endpoint. A
+    # Repository instance never mutates in place (ingest builds a new one), so
+    # its results for a given as_of are stable for the instance's lifetime —
+    # cache them keyed by the instance's version instead of id(repo), which
+    # would risk collisions once a discarded Repository's id gets reused.
+    cache_key = (repo._version, as_of)
+    cached = _snapshot_cache.get(cache_key)
+    if cached is not None:
+        _snapshot_cache.move_to_end(cache_key)
+        return list(cached)
+    snapshots = _compute_score_snapshots(repo, as_of)
+    _snapshot_cache[cache_key] = snapshots
+    if len(_snapshot_cache) > _SNAPSHOT_CACHE_LIMIT:
+        _snapshot_cache.popitem(last=False)
+    return list(snapshots)
+
+
+def _compute_score_snapshots(repo: Repository, as_of: date) -> list[ScoreSnapshot]:
     attention = attention_scores(repo, as_of)
     snapshots = []
     for technology in repo.technologies:

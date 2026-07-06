@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from dataclasses import replace
 
 from .models import Claim, Document, Technology
 from .seed_data import CLAIMS, DOCUMENTS, TECHNOLOGIES
+
+_version_counter = itertools.count()
 
 
 @dataclass
@@ -16,6 +19,11 @@ class Repository:
     claims: list[Claim]
 
     def __post_init__(self) -> None:
+        # Each Repository is treated as an immutable snapshot: callers build a
+        # new instance instead of mutating one in place (see BottleneckHandler
+        # `_ingest`). A monotonic version lets scoring cache derived results
+        # per-instance without the id()-reuse hazard of caching on id(self).
+        self._version = next(_version_counter)
         self._tech_by_id: dict[str, Technology] = {t.id: t for t in self.technologies}
         self._doc_by_id: dict[str, Document] = {d.id: d for d in self.documents}
         self._claims_by_tech: dict[str, list[Claim]] = {}

@@ -3,15 +3,105 @@
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import asdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .models import Claim, Document, ScoreSnapshot, Technology
+from .models import Claim, Document, Technology
 from .repository import Repository
 from .scoring import score_snapshots
 
-SCHEMA_VERSION = 2
+# Baseline schema, as of version 1. Do not edit table definitions here to add
+# a column — add a numbered entry to _MIGRATIONS instead, the same way a real
+# migration tool would, so `schema_version` stays a true record of which
+# statements have actually run against a given database file rather than a
+# label stamped on unconditionally.
+_BASE_SCHEMA = """
+    PRAGMA foreign_keys = ON;
+
+    CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS runs (
+        run_id TEXT PRIMARY KEY,
+        as_of TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        source TEXT NOT NULL,
+        report_path TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS technologies (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        aliases TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        source_name TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        published_at TEXT NOT NULL,
+        url TEXT NOT NULL,
+        clean_text TEXT NOT NULL,
+        reliability_weight REAL NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS claims (
+        id TEXT PRIMARY KEY,
+        doc_id TEXT NOT NULL REFERENCES documents(id),
+        technology_id TEXT NOT NULL REFERENCES technologies(id),
+        claim_type TEXT NOT NULL,
+        claim TEXT NOT NULL,
+        evidence_quote TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        impact INTEGER NOT NULL,
+        review_status TEXT NOT NULL DEFAULT 'accepted'
+    );
+
+    CREATE TABLE IF NOT EXISTS run_documents (
+        run_id TEXT NOT NULL REFERENCES runs(run_id),
+        doc_id TEXT NOT NULL REFERENCES documents(id),
+        PRIMARY KEY (run_id, doc_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS run_claims (
+        run_id TEXT NOT NULL REFERENCES runs(run_id),
+        claim_id TEXT NOT NULL REFERENCES claims(id),
+        PRIMARY KEY (run_id, claim_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS score_snapshots (
+        run_id TEXT NOT NULL REFERENCES runs(run_id),
+        technology_id TEXT NOT NULL REFERENCES technologies(id),
+        as_of TEXT NOT NULL,
+        attention_score INTEGER NOT NULL,
+        attention_growth_30d REAL NOT NULL,
+        attention_growth_90d REAL NOT NULL,
+        momentum TEXT NOT NULL,
+        bottleneck_score INTEGER,
+        confidence REAL NOT NULL,
+        evidence_count INTEGER NOT NULL,
+        top_driver TEXT NOT NULL,
+        timeline TEXT NOT NULL,
+        status TEXT NOT NULL,
+        PRIMARY KEY (run_id, technology_id)
+    );
+"""
+
+# Each entry moves the schema from (version - 1) to `version`. Migrations run
+# in order, and only the ones newer than the database's recorded
+# schema_version are applied — including on a brand-new database, which
+# replays the same history everyone else's database went through instead of
+# getting a hand-maintained "final" schema that could drift out of sync with
+# this list.
+_MIGRATIONS: list[tuple[int, str]] = [
+    (2, "ALTER TABLE technologies ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'"),
+]
+
+SCHEMA_VERSION = max(version for version, _ in _MIGRATIONS)
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -22,88 +112,25 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+def _current_schema_version(conn: sqlite3.Connection) -> int:
+    row = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+    return int(row["value"]) if row else 0
+
+
 def init_db(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
-        PRAGMA foreign_keys = ON;
-
-        CREATE TABLE IF NOT EXISTS meta (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS runs (
-            run_id TEXT PRIMARY KEY,
-            as_of TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            source TEXT NOT NULL,
-            report_path TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS technologies (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            category TEXT NOT NULL,
-            aliases TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'confirmed'
-        );
-
-        CREATE TABLE IF NOT EXISTS documents (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            source_name TEXT NOT NULL,
-            source_type TEXT NOT NULL,
-            published_at TEXT NOT NULL,
-            url TEXT NOT NULL,
-            clean_text TEXT NOT NULL,
-            reliability_weight REAL NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS claims (
-            id TEXT PRIMARY KEY,
-            doc_id TEXT NOT NULL REFERENCES documents(id),
-            technology_id TEXT NOT NULL REFERENCES technologies(id),
-            claim_type TEXT NOT NULL,
-            claim TEXT NOT NULL,
-            evidence_quote TEXT NOT NULL,
-            confidence REAL NOT NULL,
-            impact INTEGER NOT NULL,
-            review_status TEXT NOT NULL DEFAULT 'accepted'
-        );
-
-        CREATE TABLE IF NOT EXISTS run_documents (
-            run_id TEXT NOT NULL REFERENCES runs(run_id),
-            doc_id TEXT NOT NULL REFERENCES documents(id),
-            PRIMARY KEY (run_id, doc_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS run_claims (
-            run_id TEXT NOT NULL REFERENCES runs(run_id),
-            claim_id TEXT NOT NULL REFERENCES claims(id),
-            PRIMARY KEY (run_id, claim_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS score_snapshots (
-            run_id TEXT NOT NULL REFERENCES runs(run_id),
-            technology_id TEXT NOT NULL REFERENCES technologies(id),
-            as_of TEXT NOT NULL,
-            attention_score INTEGER NOT NULL,
-            attention_growth_30d REAL NOT NULL,
-            attention_growth_90d REAL NOT NULL,
-            momentum TEXT NOT NULL,
-            bottleneck_score INTEGER,
-            confidence REAL NOT NULL,
-            evidence_count INTEGER NOT NULL,
-            top_driver TEXT NOT NULL,
-            timeline TEXT NOT NULL,
-            status TEXT NOT NULL,
-            PRIMARY KEY (run_id, technology_id)
-        );
-        """
-    )
-    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(technologies)")}
-    if "status" not in existing_columns:
-        conn.execute("ALTER TABLE technologies ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'")
+    conn.executescript(_BASE_SCHEMA)
+    current_version = _current_schema_version(conn)
+    for version, statement in _MIGRATIONS:
+        if version <= current_version:
+            continue
+        try:
+            conn.execute(statement)
+        except sqlite3.OperationalError as exc:
+            # Tolerate a database whose physical schema is already ahead of its
+            # recorded schema_version (e.g. manually patched) instead of
+            # crashing every future startup.
+            if "duplicate column name" not in str(exc):
+                raise
     conn.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
         ("schema_version", str(SCHEMA_VERSION)),

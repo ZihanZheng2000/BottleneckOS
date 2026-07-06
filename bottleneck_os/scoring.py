@@ -6,7 +6,7 @@ from collections import Counter, OrderedDict
 from datetime import date
 from math import exp
 
-from .models import Claim, Document, ScoreSnapshot, Technology
+from .models import Claim, ScoreSnapshot
 from .policy import EVIDENCE_GATE
 from .repository import Repository
 

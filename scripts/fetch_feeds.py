@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from bottleneck_os.rss_fetcher import FeedConfig, fetch_feed_to_archive, parse_feed_config
+from bottleneck_os.rss_fetcher import fetch_feed_to_archive, parse_feed_config
 
 
 def main() -> None:
@@ -27,7 +27,7 @@ def main() -> None:
     feeds_path = Path(args.feeds)
     if not feeds_path.exists():
         print(f"Feed config not found: {feeds_path}")
-        print(f"Create it or copy from sources/feeds.txt")
+        print("Create it or copy from sources/feeds.txt")
         sys.exit(1)
 
     configs = parse_feed_config(feeds_path)
@@ -45,7 +45,6 @@ def main() -> None:
         try:
             before = set(archive_dir.glob("*.md")) if archive_dir.exists() else set()
             paths = fetch_feed_to_archive(config, archive_dir, timeout=args.timeout)
-            after = set(paths)
             new_count = sum(1 for p in paths if p not in before)
             skip_count = len(paths) - new_count
             print(f"  {new_count} new, {skip_count} already archived ({len(paths)} total items)")
@@ -56,7 +55,7 @@ def main() -> None:
 
     print(f"\nDone: {total_new} new items archived, {total_skipped} skipped (already exist)")
     print(f"Archive: {archive_dir.resolve()}")
-    print(f"\nNext step:")
+    print("\nNext step:")
     print(f"  py scripts/extract_claims.py --source-dir {args.archive_dir} --llm --auto-accept")
 
 

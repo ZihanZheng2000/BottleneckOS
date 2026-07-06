@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from .coverage import coverage_summary
+from .markdown import render_table
 from .storage import load_repository_for_run
 
 
@@ -131,11 +132,11 @@ def render_diff_markdown(diff: dict) -> str:
 
 ## Score Changes
 
-{_table(['Technology', 'Prev Score', 'Current Score', 'Score Delta', 'Prev Evidence', 'Current Evidence', 'Evidence Delta', 'Status'], score_rows)}
+{render_table(['Technology', 'Prev Score', 'Current Score', 'Score Delta', 'Prev Evidence', 'Current Evidence', 'Evidence Delta', 'Status'], score_rows)}
 
 ## Coverage Changes
 
-{_table(['Metric', 'Base', 'Current', 'Delta'], coverage_rows)}
+{render_table(['Metric', 'Base', 'Current', 'Delta'], coverage_rows)}
 
 ## Remaining Current Coverage Gaps
 
@@ -169,10 +170,3 @@ def _format_delta(value: int | float | None) -> str:
         return "NA"
     prefix = "+" if value > 0 else ""
     return f"{prefix}{value}"
-
-
-def _table(headers: list[str], rows: list[list[object]]) -> str:
-    header = "| " + " | ".join(headers) + " |"
-    divider = "| " + " | ".join("---" for _ in headers) + " |"
-    body = ["| " + " | ".join(str(value) for value in row) + " |" for row in rows]
-    return "\n".join([header, divider, *body])

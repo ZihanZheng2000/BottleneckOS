@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .coverage import coverage_summary, source_coverage, technology_policy_coverage
 from .expert_signal import expert_signal_by_technology, expert_signal_summary, expert_source_coverage
+from .markdown import render_table
 from .repository import Repository
 from .scoring import bottleneck_radar, evidence_is_sufficient, evidence_rows, technology_detail, technology_radar
 from .thesis import generate_thesis
@@ -44,15 +45,8 @@ def evidence_gap_analysis(repo: Repository) -> list[dict]:
     return rows
 
 
-def _table(headers: list[str], rows: list[list[object]]) -> str:
-    header = "| " + " | ".join(headers) + " |"
-    divider = "| " + " | ".join("---" for _ in headers) + " |"
-    body = ["| " + " | ".join(str(value) for value in row) + " |" for row in rows]
-    return "\n".join([header, divider, *body])
-
-
 def document_source_table(repo: Repository) -> str:
-    return _table(
+    return render_table(
         ["Source", "Type", "Date", "Title", "URL"],
         [
             [
@@ -95,7 +89,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
             "automation, and stronger counterevidence rather than merely clearing the minimum threshold:"
         )
 
-    bottleneck_table = _table(
+    bottleneck_table = render_table(
         ["Rank", "Technology", "Score", "Confidence", "Timeline", "Top Driver"],
         [
             [
@@ -109,7 +103,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
             for index, row in enumerate(bottlenecks["current"], start=1)
         ],
     )
-    insufficient_table = _table(
+    insufficient_table = render_table(
         ["Technology", "Category", "Evidence", "Status", "Next Step"],
         [
             [
@@ -123,7 +117,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
         ],
     )
 
-    attention_table = _table(
+    attention_table = render_table(
         ["Technology", "Attention", "30d Growth", "Momentum", "Evidence"],
         [
             [
@@ -137,7 +131,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
         ],
     )
 
-    gap_table = _table(
+    gap_table = render_table(
         ["Technology", "Sufficient", "Evidence", "Sources", "Missing"],
         [
             [
@@ -151,15 +145,15 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
         ],
     )
 
-    source_table = _table(
+    source_table = render_table(
         ["Source Target", "Category", "Priority", "Status", "Matched Documents"],
         [[row["source"], row["category"], row["priority"], row["status"], row["matched_documents"]] for row in sources],
     )
-    expert_source_table = _table(
+    expert_source_table = render_table(
         ["Expert Source", "Priority", "Status", "Matched Documents"],
         [[row["source"], row["priority"], row["status"], row["matched_documents"]] for row in expert_sources],
     )
-    expert_technology_table = _table(
+    expert_technology_table = render_table(
         ["Technology", "Category", "Expert Status", "Expert Evidence", "Expert Sources"],
         [
             [
@@ -173,7 +167,7 @@ def generate_run_report(repo: Repository, as_of: date, test_results: str | None 
         ],
     )
 
-    technology_policy_table = _table(
+    technology_policy_table = render_table(
         ["Technology Target", "Category", "Priority", "Status", "Evidence"],
         [
             [row["technology"], row["category"], row["priority"], row["status"], row["evidence_count"]]

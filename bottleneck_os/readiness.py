@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .coverage import coverage_summary
 from .evidence_audit import audit_evidence_traceability
+from .markdown import render_table
 from .repository import build_seed_repository
 from .review import load_review_repository
 from .schemas import validate_claim_records, validate_document_records
@@ -159,7 +160,7 @@ Generated as of: {as_of}
 
 Overall status: **{audit['status']}**
 
-{_table(['Check', 'Status', 'Message'], rows)}
+{render_table(['Check', 'Status', 'Message'], rows)}
 
 ## Interpretation
 
@@ -183,10 +184,3 @@ def _read_jsonl(path: Path) -> list[dict]:
             if stripped:
                 records.append(json.loads(stripped))
     return records
-
-
-def _table(headers: list[str], rows: list[list[object]]) -> str:
-    header = "| " + " | ".join(headers) + " |"
-    divider = "| " + " | ".join("---" for _ in headers) + " |"
-    body = ["| " + " | ".join(str(value) for value in row) + " |" for row in rows]
-    return "\n".join([header, divider, *body])

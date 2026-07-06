@@ -6,6 +6,8 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
+from .markdown import render_table
+
 
 def historical_trends(conn: sqlite3.Connection, as_of: date, windows: tuple[int, ...] = (30, 90)) -> list[dict]:
     latest_rows = _latest_rows_by_technology(conn, as_of)
@@ -67,7 +69,7 @@ Generated as of: {as_of.isoformat()}
 
 Historical trend values are calculated from persisted run snapshots. If no baseline run exists inside a window, the row is marked `insufficient_history`.
 
-{_table(['Technology', 'Score', 'Attention', '30d Score', '30d Attention', '30d Evidence', '30d Status', '90d Score', '90d Status'], rows)}
+{render_table(['Technology', 'Score', 'Attention', '30d Score', '30d Attention', '30d Evidence', '30d Status', '90d Score', '90d Status'], rows)}
 """
 
 
@@ -127,10 +129,3 @@ def _format_delta(value: int | float | None) -> str:
         return "NA"
     prefix = "+" if value > 0 else ""
     return f"{prefix}{value}"
-
-
-def _table(headers: list[str], rows: list[list[object]]) -> str:
-    header = "| " + " | ".join(headers) + " |"
-    divider = "| " + " | ".join("---" for _ in headers) + " |"
-    body = ["| " + " | ".join(str(value) for value in row) + " |" for row in rows]
-    return "\n".join([header, divider, *body])

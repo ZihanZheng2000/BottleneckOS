@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from .coverage import technology_policy_coverage
+from .markdown import render_bullets, render_table
 from .policy import EVIDENCE_GATE, SOURCE_UNIVERSE, TECHNOLOGY_UNIVERSE, SourceTarget, TechnologyTarget
 from .repository import Repository
 
@@ -100,15 +101,15 @@ Aliases / search terms: {', '.join(item['aliases'])}
 
 Required evidence mix:
 
-{_bullets(item['required_claim_groups'])}
+{render_bullets(item['required_claim_groups'])}
 
 Candidate source targets:
 
-{_table(['Source', 'Category', 'Priority', 'Expected Types', 'Why It Matters'], source_rows)}
+{render_table(['Source', 'Category', 'Priority', 'Expected Types', 'Why It Matters'], source_rows)}
 
 Search queries:
 
-{_bullets(item['search_queries'])}
+{render_bullets(item['search_queries'])}
 """
         )
 
@@ -186,14 +187,3 @@ def _search_queries(technology: TechnologyTarget, sources: list[dict]) -> list[s
         for term in terms[:2]:
             queries.append(f'{source["name"]} "{term}" AI infrastructure bottleneck')
     return queries[:8]
-
-
-def _bullets(items: list[str]) -> str:
-    return "\n".join(f"- {item}" for item in items)
-
-
-def _table(headers: list[str], rows: list[list[object]]) -> str:
-    header = "| " + " | ".join(headers) + " |"
-    divider = "| " + " | ".join("---" for _ in headers) + " |"
-    body = ["| " + " | ".join(str(value) for value in row) + " |" for row in rows]
-    return "\n".join([header, divider, *body])

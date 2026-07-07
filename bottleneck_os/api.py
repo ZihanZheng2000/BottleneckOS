@@ -234,49 +234,66 @@ class BottleneckHandler(BaseHTTPRequestHandler):
         with BottleneckHandler._repo_lock:
             if self.repo.has_document(doc_id):
                 raise ValueError(f"This document has already been ingested (id: {doc_id})")
-
             technologies = list(self.repo.technologies)
-            extraction_method = "keyword"
-            llm_error: str | None = None
+
+        extraction_method = "keyword"
+        llm_error: str | None = None
+        use_llm = bool(payload.get("use_llm", True))
+        if use_llm:
             try:
                 from .llm_extractor import detect_provider, _make_client, extract_claims_with_llm, DEFAULT_MODEL
                 provider_name, api_key = detect_provider()
                 client = _make_client(provider_name, api_key)
                 model = DEFAULT_MODEL[provider_name]
                 claims = extract_claims_with_llm(
-                    document, technologies,
-                    provider=provider_name, client=client, model=model,
+                    document,
+                    technologies,
+                    provider=provider_name,
+                    client=client,
+                    model=model,
                 )
                 extraction_method = f"{provider_name}/{model}"
             except Exception as exc:
                 llm_error = f"{type(exc).__name__}: {exc}"
                 logger.warning(
                     "LLM extraction failed for document %s, falling back to keyword extraction: %s",
-                    doc_id, llm_error,
+                    doc_id,
+                    llm_error,
                 )
                 claims = []
-                seen: set = set()
-                for sentence in split_sentences(content):
-                    claim_type = classify_claim_type(sentence)
-                    if not claim_type:
-                        continue
-                    for tech in technology_matches(sentence, technologies):
-                        key = (tech.id, claim_type, sentence)
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        claim_id = _stable_id("claim", doc_id, tech.id, claim_type, sentence)
-                        claims.append(Claim(
-                            claim_id, doc_id, tech.id, claim_type,
-                            infer_claim(sentence, tech, claim_type),
-                            sentence, 0.72, IMPACT_BY_TYPE[claim_type],
-                        ))
+        else:
+            claims = []
 
+        if not claims:
+            seen: set = set()
+            for sentence in split_sentences(content):
+                claim_type = classify_claim_type(sentence)
+                if not claim_type:
+                    continue
+                for tech in technology_matches(sentence, technologies):
+                    key = (tech.id, claim_type, sentence)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    claim_id = _stable_id("claim", doc_id, tech.id, claim_type, sentence)
+                    claims.append(Claim(
+                        claim_id, doc_id, tech.id, claim_type,
+                        infer_claim(sentence, tech, claim_type),
+                        sentence, 0.72, IMPACT_BY_TYPE[claim_type],
+                    ))
+
+        with BottleneckHandler._repo_lock:
+            if self.repo.has_document(doc_id):
+                raise ValueError(f"This document has already been ingested (id: {doc_id})")
             existing_claim_ids = {c.id for c in self.repo.claims}
             new_claims = [c for c in claims if c.id not in existing_claim_ids]
+            technology_ids = {t.id for t in self.repo.technologies}
+            merged_technologies = list(self.repo.technologies) + [
+                technology for technology in technologies if technology.id not in technology_ids
+            ]
 
             BottleneckHandler.repo = Repository(
-                technologies,
+                merged_technologies,
                 list(self.repo.documents) + [document],
                 list(self.repo.claims) + new_claims,
             )

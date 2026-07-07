@@ -144,6 +144,7 @@ class ApiTests(unittest.TestCase):
                 ),
                 "source_name": "ingest-test-source",
                 "title": "Ingest test document",
+                "use_llm": False,
             },
         )
         self.assertIn("document_id", payload)
@@ -155,6 +156,7 @@ class ApiTests(unittest.TestCase):
             "text": "Cooling systems face new thermal density constraints in AI data centers.",
             "source_name": "duplicate-test-source",
             "title": "Duplicate test document",
+            "use_llm": False,
         }
         self.post_json("/api/ingest", body)
         payload = self.post_json("/api/ingest", body, expected_status=400)

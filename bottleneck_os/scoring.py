@@ -131,11 +131,11 @@ def bottleneck_score(repo: Repository, technology_id: str) -> int | None:
     return round(score)
 
 
-def _momentum(score: int, claim_counts: Counter[str]) -> tuple[float, float, str]:
-    recent = claim_counts["recent"]
-    prior = claim_counts["prior"]
+def _momentum(score: int, buckets_30d: Counter[str], buckets_90d: Counter[str]) -> tuple[float, float, str]:
+    recent, prior = buckets_30d["recent"], buckets_30d["prior"]
+    recent_90, prior_90 = buckets_90d["recent"], buckets_90d["prior"]
     growth_30d = (recent - prior) / max(prior, 1)
-    growth_90d = score / 100
+    growth_90d = (recent_90 - prior_90) / max(prior_90, 1)
     if growth_30d > 0.4 and score >= 70:
         label = "explosive"
     elif growth_30d > 0.15:
@@ -175,12 +175,14 @@ def _compute_score_snapshots(repo: Repository, as_of: date) -> list[ScoreSnapsho
     snapshots = []
     for technology in repo.technologies:
         claims = repo.claims_for_technology(technology.id)
-        buckets: Counter[str] = Counter()
+        buckets_30d: Counter[str] = Counter()
+        buckets_90d: Counter[str] = Counter()
         for claim in claims:
             doc = repo.document_by_id(claim.doc_id)
             age = (as_of - doc.published_at).days
-            buckets["recent" if age <= 45 else "prior"] += 1
-        growth_30d, growth_90d, momentum = _momentum(attention[technology.id], buckets)
+            buckets_30d["recent" if age <= 45 else "prior"] += 1
+            buckets_90d["recent" if age <= 90 else "prior"] += 1
+        growth_30d, growth_90d, momentum = _momentum(attention[technology.id], buckets_30d, buckets_90d)
         score = bottleneck_score(repo, technology.id)
         confidence = round(sum(claim.confidence for claim in claims) / max(len(claims), 1), 2)
         driver = top_driver(repo, technology.id)

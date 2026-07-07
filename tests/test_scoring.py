@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 import bottleneck_os.scoring as scoring_module
+from bottleneck_os.models import Claim, Document, Technology
 from bottleneck_os.repository import Repository, build_seed_repository
 from bottleneck_os.scoring import (
     bottleneck_radar,
@@ -59,6 +60,29 @@ class ScoringTests(unittest.TestCase):
         self.assertIn("demand_growth", detail["breakdown"])
         self.assertGreaterEqual(len(detail["evidence"]), 3)
         self.assertGreaterEqual(len(detail["counterarguments"]), 1)
+
+    def test_growth_90d_is_a_real_90_day_bucket_ratio_not_the_attention_score(self) -> None:
+        as_of = date(2026, 6, 10)
+        tech = Technology("tech_test", "Test Tech", "Compute")
+
+        def doc(doc_id: str, days_ago: int) -> Document:
+            return Document(
+                doc_id, "Title", "Source", "news_article", as_of - timedelta(days=days_ago),
+                "https://example.com/" + doc_id, "Some source text about Test Tech demand.", 0.8,
+            )
+
+        def claim(claim_id: str, doc_id: str) -> Claim:
+            return Claim(claim_id, doc_id, tech.id, "demand_signal", "Demand claim", "Some source text", 0.8, 70)
+
+        # age <= 45 -> recent_30 and recent_90; 45 < age <= 90 -> prior_30, recent_90;
+        # age > 90 -> prior_30 and prior_90.
+        documents = [doc("doc_a", 10), doc("doc_b", 60), doc("doc_c", 120)]
+        claims = [claim("claim_a", "doc_a"), claim("claim_b", "doc_b"), claim("claim_c", "doc_c")]
+        repo = Repository([tech], documents, claims)
+
+        snapshot = next(item for item in score_snapshots(repo, as_of) if item.technology_id == tech.id)
+        self.assertAlmostEqual(-0.5, snapshot.attention_growth_30d)  # (1 recent - 2 prior) / 2
+        self.assertAlmostEqual(1.0, snapshot.attention_growth_90d)  # (2 recent - 1 prior) / 1
 
     def test_score_snapshots_are_cached_per_repo_version_and_as_of(self) -> None:
         calls: list[date] = []

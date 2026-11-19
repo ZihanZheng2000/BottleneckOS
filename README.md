@@ -20,6 +20,16 @@ The project turns public evidence into a traceable bottleneck radar for AI infra
 | JSON API | Yes |
 | Evidence traceability audit | Yes |
 
+## Auto-Research Application
+
+This project is an applied research and engineering example developed using the [Human–AI Collaborative Science Framework](https://github.com/ZihanZheng2000/human-ai-collaborative-science-framework). It translates an open-ended technology research question into an inspectable software prototype.
+
+- **Research design:** identify infrastructure constraints and define evidence categories, counterarguments and scoring criteria.
+- **Tool creation and execution:** implement source ingestion, claim extraction, evidence-gated scoring, persistent run snapshots, a JSON API and a web interface.
+- **Verification and refinement:** retain source provenance, expose coverage gaps and support human acceptance or rejection of extracted claims before reporting; see [EVIDENCE.md](EVIDENCE.md) for the traceability standard.
+
+These are inspectable implementation and research artifacts, not a recorded end-to-end agent trajectory. Ingestion remains manually triggered and evidence coverage is incomplete.
+
 ## Preview
 
 ![Bottleneck OS web UI](examples/bottleneck-radar-ui.png)
